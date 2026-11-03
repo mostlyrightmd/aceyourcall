@@ -17,4 +17,6 @@ Applications and supplied context stay in process memory and are passed to OpenA
 
 The self-hosted setup sends no telemetry to Mostly Right. Optional analytics require the operator's own configuration and notices. Public web research can be incomplete or wrong: treat it as preparation context, not a verified identity or a prediction of a person's actual questions. Voices are stock synthetic practice voices.
 
+The interviewer uses GPT-Live 1 for continuous audio conversation. Prepared questions are fallback material; follow-ups should respond to the founder's latest answer. The server sends silent time updates, reserves the final 30 seconds for closing, and ends the interview at ten minutes. Agenda checks run alongside the conversation; coaching belongs in the scorecard. These controls reduce scripted behavior but do not guarantee identical conversations or ChatGPT Voice parity.
+
 People sharing one microphone share that participant's identity. Named captions use per-participant audio attribution and may lag; speaking indicators are instantaneous media activity and are not a transcript.

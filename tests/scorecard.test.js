@@ -4,6 +4,8 @@ import {
   groupTranscript,
   validateScorecard,
   scoreSchema,
+  score,
+  SCORE_RESERVE,
 } from "../src/scorecard.js";
 const transcript = [
   { speaker: "founders", text: "We have ", start_ms: 1000, end_ms: 1300 },
@@ -95,4 +97,61 @@ test("provider schema constrains question IDs while allowing an unlisted follow-
     ["R1", "unlisted"],
   );
   assert.throws(() => scoreSchema([]));
+});
+
+test("scorecard retries truncated output once and accounts for both responses", async () => {
+  const oldFetch = globalThis.fetch,
+    oldKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "test-only";
+  let calls = 0,
+    mode = "recover";
+  try {
+    globalThis.fetch = async (_url, init) => {
+      const body = JSON.parse(init.body);
+      calls++;
+      assert.equal(body.max_output_tokens, calls === 1 ? 8000 : 12000);
+      assert.equal(body.reasoning.effort, "low");
+      assert.equal(body.store, false);
+      if (mode === "http") return { ok: false, status: 429 };
+      const complete = calls === 2 && mode === "recover";
+      return {
+        ok: true,
+        json: async () => ({
+          status: complete ? "completed" : "incomplete",
+          incomplete_details: { reason: "max_output_tokens" },
+          usage: {
+            input_tokens: 1000,
+            output_tokens: complete ? 1600 : body.max_output_tokens,
+          },
+          output: [
+            {
+              content: [
+                {
+                  type: "output_text",
+                  text: complete ? JSON.stringify(card()) : '{"scores":[',
+                },
+              ],
+            },
+          ],
+        }),
+      };
+    };
+    const result = await score(record, [{ id: "R1" }]);
+    assert.equal(calls, 2);
+    assert.deepEqual(result.usage, { input_tokens: 2000, output_tokens: 9600 });
+    assert.ok(Math.abs(result.cost - 0.005) < 1e-10);
+    assert.ok((2 * 180000 * 0.1 + 20000 * 0.5) / 1e6 < SCORE_RESERVE);
+    calls = 0;
+    mode = "truncated";
+    await assert.rejects(score(record, [{ id: "R1" }]), /output incomplete/);
+    assert.equal(calls, 2);
+    calls = 0;
+    mode = "http";
+    await assert.rejects(score(record, [{ id: "R1" }]), /HTTP 429/);
+    assert.equal(calls, 1);
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = oldKey;
+  }
 });

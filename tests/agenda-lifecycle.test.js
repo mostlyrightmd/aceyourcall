@@ -32,7 +32,7 @@ test("server warns, closes on repeated derailment, and preserves classifier char
     `import {EventEmitter} from 'node:events';import {existsSync,readFileSync,unlinkSync,appendFileSync} from 'node:fs';
  export function key(){throw Error('No paid API allowed');}
  export async function createLive(){return {session:{id:'fake'},transport:{sdp:'fake-answer'}};}
- export function attach(){const ws=new EventEmitter();ws.readyState=1;let timer;ws.send=raw=>{const e=JSON.parse(raw);appendFileSync('private/sent',raw+'\\n');if(e.type==='session.close')setTimeout(()=>ws.emit('message',JSON.stringify({type:'session.closed',usage:{seconds:15}})),5);};ws.close=()=>{clearInterval(timer);ws.readyState=3;ws.emit('close');};setTimeout(()=>{ws.emit('open');ws.emit('message',JSON.stringify({type:'session.started'}));timer=setInterval(()=>{if(existsSync('private/inject')){const e=readFileSync('private/inject','utf8');unlinkSync('private/inject');ws.emit('message',e);}},20);},20);return ws;}
+ export function attach(){const ws=new EventEmitter();ws.readyState=1;let timer;ws.send=raw=>{const e=JSON.parse(raw);appendFileSync('private/sent',raw+'\\n');if(e.type==='session.close')setTimeout(()=>{ws.emit('message',JSON.stringify({type:'error',error:{code:'context_injection_incomplete'}}));ws.emit('message',JSON.stringify({type:'session.closed',usage:{seconds:15}}));},5);};ws.close=()=>{clearInterval(timer);ws.readyState=3;ws.emit('close');};setTimeout(()=>{ws.emit('open');ws.emit('message',JSON.stringify({type:'session.started'}));ws.emit('message',JSON.stringify({type:'session.started'}));timer=setInterval(()=>{if(existsSync('private/inject')){const e=readFileSync('private/inject','utf8');unlinkSync('private/inject');ws.emit('message',e);}},20);},20);return ws;}
  export async function hangup(){}
  `,
   );
@@ -114,10 +114,24 @@ test("server warns, closes on repeated derailment, and preserves classifier char
     assert.ok(Math.abs(r.agendaCost - 0.0002) < 1e-9);
     assert.ok(Math.abs(r.cost - 0.0127) < 1e-9);
     assert.equal(r.finalUsageConfirmed, true);
+    assert.deepEqual(
+      r.errors,
+      [],
+      "Closing can cancel pending context updates without failing the interview",
+    );
     assert.equal(current.kill, false);
     const sent = readFileSync(join(dir, "private/sent"), "utf8");
     assert.match(sent, /Another unrelated task/);
     assert.match(sent, /session.close/);
+    assert.equal(
+      sent
+        .trim()
+        .split("\n")
+        .map(JSON.parse)
+        .filter((e) => e.type === "session.commentary.append").length,
+      1,
+      "Duplicate provider start events must not repeat the opening cue",
+    );
     clearInterval(heartbeat);
     for (let i = 0; i < 100; i++) {
       current = await state();
