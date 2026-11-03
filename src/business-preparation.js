@@ -1,4 +1,8 @@
-import { createHash, randomUUID } from "node:crypto";
+import {
+  preparationIdentity,
+  legacyPreparationIdentity,
+} from "./preparation-identity.js";
+import { randomUUID } from "node:crypto";
 import { key } from "./provider.js";
 export const PREPARATION_RESERVE = 0.2;
 export const PREPARATION_TTL = 7 * 86400000;
@@ -193,9 +197,10 @@ export function preparationCache(
   function enqueue(roomId, context) {
     if (!/^[a-f0-9-]{36}$/.test(roomId || "")) throw Error("Room required");
     prune();
-    const id = createHash("sha256")
-      .update(JSON.stringify([1, roomId, context.application, context.facts]))
-      .digest("hex");
+    const id = preparationIdentity(context);
+    // Reuse a still-valid pre-migration result when its original room returns.
+    const legacy = get(legacyPreparationIdentity(roomId, context));
+    if (!get(id) && legacy?.status === "ready") save({ ...legacy, id });
     const old = get(id);
     if (old && old.status !== "failed") return old;
     if (old && Date.now() - old.updated < 60000) return old;

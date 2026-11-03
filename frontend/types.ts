@@ -49,6 +49,8 @@ export interface Session {
   captionFinishing?: boolean;
   agendaWarning?: string;
   stopReason?: string;
+  interrupted?: boolean;
+  providerCloseReason?: string;
 }
 export interface Research {
   status: string;

@@ -115,6 +115,7 @@ test("preparation persists derived context, reuses cache and never persists raw 
   assert.equal(cache.get(job.id).status, "ready");
   const restored = preparationCache(store, opts);
   assert.equal(restored.enqueue(room, context).id, job.id);
+  assert.equal(restored.enqueue(randomUUID(), context).id, job.id);
   await restored.tick();
   assert.equal(runs, 1);
   assert.equal(reserves, 1);
@@ -125,7 +126,7 @@ test("preparation persists derived context, reuses cache and never persists raw 
     application: context.application + " changed",
   });
   assert.notEqual(changed.id, job.id);
-  assert.notEqual(restored.enqueue(randomUUID(), context).id, job.id);
+  assert.equal(restored.enqueue(randomUUID(), context).id, job.id);
   store.db.close();
 });
 
@@ -168,4 +169,20 @@ test("speaker frames retain creation-time origin across delayed provider start",
   );
   record.speakerFrames[2].people = [a, b];
   assert.equal(microphoneAt(record, { start_ms: 100, end_ms: 1400 }), null);
+});
+
+test("preparation identity is stable for line endings and note order but changes with evidence", async () => {
+  const { preparationIdentity } =
+    await import("../src/preparation-identity.js");
+  assert.equal(
+    preparationIdentity({
+      application: " hello\r\nworld ",
+      facts: { b: 2, a: 1 },
+    }),
+    preparationIdentity({ application: "hello\nworld", facts: { a: 1, b: 2 } }),
+  );
+  assert.notEqual(
+    preparationIdentity({ application: "hello", facts: { a: 1 } }),
+    preparationIdentity({ application: "hello", facts: { a: 2 } }),
+  );
 });

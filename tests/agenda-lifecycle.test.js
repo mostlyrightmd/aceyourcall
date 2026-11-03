@@ -24,7 +24,7 @@ test("server warns, closes on repeated derailment, and preserves classifier char
     join(dir, "src/agenda.js"),
     'import {existsSync} from "node:fs";\n' +
       agenda.slice(0, start) +
-      `export async function inspectAgenda({input}){if(input.includes('Delayed'))while(!existsSync('private/release-check'))await new Promise(r=>setTimeout(r,20));return {decision:{derailment:true,repair_interviewer:false,evidence:'shopping'},cost:.0001};}\n` +
+      `export async function inspectAgenda({input}){if(input.includes('Unavailable'))throw Object.assign(Error('timeout'),{code:'agenda_timeout'});if(input.includes('Recovered'))return {decision:{derailment:false,repair_interviewer:false,covered_questions:[]},cost:.0001};if(input.includes('Delayed'))while(!existsSync('private/release-check'))await new Promise(r=>setTimeout(r,20));return {decision:{derailment:true,repair_interviewer:false,evidence:'shopping'},cost:.0001};}\n` +
       agenda.slice(end),
   );
   writeFileSync(
@@ -212,6 +212,65 @@ test("server warns, closes on repeated derailment, and preserves classifier char
         1e-9,
     );
     assert.ok(Math.abs(current.total - 0.0378) < 1e-9);
+    clearInterval(heartbeat);
+    const fourth = await post("/api/sessions", {
+      profile: "speedrun-10",
+      consent: true,
+      sdp: "fake-offer-long-enough",
+    });
+    heartbeat = setInterval(
+      () => post("/api/sessions/" + fourth.id + "/heartbeat", {}),
+      1000,
+    );
+    for (let n = 1; n <= 3; n++) {
+      writeFileSync(
+        join(dir, "private/inject"),
+        JSON.stringify({
+          type: "session.input_transcript.delta",
+          delta: "Unavailable checker, real answer.",
+          start_ms: n * 1000,
+          end_ms: n * 1000 + 500,
+        }),
+      );
+      for (let i = 0; i < 110; i++) {
+        current = await state();
+        if (current.sessions.find((r) => r.id === fourth.id).errors.length >= n)
+          break;
+        await sleep(100);
+      }
+      const r = current.sessions.find((r) => r.id === fourth.id);
+      assert.equal(r.status, "live");
+      assert.equal(r.errors.length, n);
+      assert.equal(r.stopReason, undefined);
+      assert.equal(r.supervisionDegraded, true);
+    }
+    writeFileSync(
+      join(dir, "private/inject"),
+      JSON.stringify({
+        type: "session.input_transcript.delta",
+        delta: "Recovered checker, another answer.",
+        start_ms: 10000,
+        end_ms: 11000,
+      }),
+    );
+    for (let i = 0; i < 110; i++) {
+      current = await state();
+      if (
+        current.sessions.find((r) => r.id === fourth.id).supervisionDegraded ===
+        false
+      )
+        break;
+      await sleep(100);
+    }
+    assert.equal(
+      current.sessions.find((r) => r.id === fourth.id).supervisionDegraded,
+      false,
+    );
+    assert.equal(
+      current.sessions.find((r) => r.id === fourth.id).status,
+      "live",
+    );
+    await post("/api/sessions/" + fourth.id + "/end", {});
   } finally {
     clearInterval(heartbeat);
     writeFileSync(join(dir, "private/release-check"), "release");

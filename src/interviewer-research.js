@@ -4,6 +4,7 @@ export const RESEARCH_RESERVE = 0.1;
 export function researchIdentity(person) {
   const name = String(person?.name || "")
     .trim()
+    .replace(/\s+/g, " ")
     .slice(0, 100);
   const linkedin = String(person?.linkedin || "").trim();
   if (!name && !linkedin) return null;
@@ -19,7 +20,10 @@ export function researchIdentity(person) {
       .update(
         JSON.stringify([
           name.toLowerCase(),
-          linkedin.replace(/\/$/, "").toLowerCase(),
+          linkedin
+            .replace("https://linkedin.com/", "https://www.linkedin.com/")
+            .replace(/\/$/, "")
+            .toLowerCase(),
         ]),
       )
       .digest("hex"),

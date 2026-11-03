@@ -280,7 +280,8 @@ test("an in-flight pre-mutation summary cannot reserve a now-busy worker", async
 });
 
 test("preparation spreads across funded workers and retains cache affinity without another paid job", async () => {
-  const { createHash } = await import("node:crypto");
+  const { preparationIdentity } =
+    await import("../src/preparation-identity.js");
   const dir = mkdtempSync(join(tmpdir(), "mp-preparation-pool-")),
     db = new DatabaseSync(":memory:");
   const workers = [
@@ -309,16 +310,7 @@ test("preparation spreads across funded workers and retains cache affinity witho
       else if (init.body) {
         creates++;
         const b = JSON.parse(init.body),
-          id = createHash("sha256")
-            .update(
-              JSON.stringify([
-                1,
-                b.roomId,
-                b.context.application,
-                b.context.facts,
-              ]),
-            )
-            .digest("hex");
+          id = preparationIdentity(b.context);
         result = { id, status: "ready" };
         jobs.set(i + id, result);
         states[i].backgroundProcessing = true;
@@ -331,13 +323,22 @@ test("preparation spreads across funded workers and retains cache affinity witho
     };
     const [a, b] = await Promise.all([
       pool.prepare({ id: "a" }, context),
-      pool.prepare({ id: "b" }, context),
+      pool.prepare(
+        { id: "b" },
+        {
+          ...context,
+          application: context.application + " Different business.",
+        },
+      ),
     ]);
     assert.notEqual(a.worker, b.worker);
     assert.equal(creates, 2);
     states.forEach((s) => (s.availableBudget = 0));
     const again = await pool.prepare({ id: "a", preparation: a }, context);
     assert.equal(again.worker, a.worker);
+    const anotherRoom = await pool.prepare({ id: "new-room" }, context);
+    assert.equal(anotherRoom.id, a.id);
+    assert.equal(anotherRoom.worker, a.worker);
     assert.equal(creates, 2);
   } finally {
     if (old === undefined) delete process.env.MP_OPERATOR_POOL_PATH;
