@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AceYourCall</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <a href="/" class="brand">mp<span> / AceYourCall</span></a
+        ><span class="badge">PRIVATE PRACTICE</span>
+      </header>
+      <section class="hero">
+        <p class="eyebrow">TEN MINUTES. MAKE THEM COUNT.</p>
+        <h1>A sharper answer<br />starts here.</h1>
+        <p class="sub">
+          A practice investor panel, grounded in your submitted application.
+        </p>
+      </section>
+      <div class="layout">
+        <section class="card stage">
+          <div class="stage-top">
+            <span id="status">Checking setup…</span
+            ><span id="clock">10:00</span>
+          </div>
+          <div class="orb" aria-hidden="true">
+            <span>A</span><span>B</span><span>C</span>
+          </div>
+          <h2>Your practice panel</h2>
+          <p class="muted">Team & story · Traction & slope · Market & depth</p>
+          <label for="profile">Interview profile</label
+          ><select id="profile"></select
+          ><label class="consent"
+            ><input type="checkbox" id="consent" /> Everyone agrees to practice
+            transcription and sending the application and audio to OpenAI. No
+            outsiders are present.</label
+          >
+          <label for="meet-url">Google Meet link</label>
+          <input
+            type="url"
+            id="meet-url"
+            placeholder="https://meet.google.com/abc-defg-hij"
+          />
+          <p class="small">
+            The bot joins in its dedicated Google browser profile. The host may
+            need to admit it.
+          </p>
+          <div class="buttons">
+            <button id="meet-start" class="primary">Join Google Meet</button>
+            <button id="meet-end" disabled>Leave Meet</button>
+          </div>
+          <p id="meet-status" role="status">Meeting bot idle</p>
+          <div class="buttons">
+            <button id="start" class="primary">Start interview</button
+            ><button id="mute" disabled>Mute mic</button
+            ><button id="end" disabled>End now</button>
+          </div>
+          <p id="notice" role="status" aria-live="polite"></p>
+          <audio id="audio" autoplay></audio>
+        </section>
+        <aside class="card">
+          <p class="eyebrow">YOUR SOURCE OF TRUTH</p>
+          <h2>The application you submitted.</h2>
+          <p class="muted">
+            Paste it exactly as submitted. Missing details become questions,
+            never invented facts.
+          </p>
+          <label for="application">Submitted application</label
+          ><textarea
+            id="application"
+            rows="10"
+            placeholder="Paste your submitted application…"
+          ></textarea>
+          <details>
+            <summary>Optional founder clarifications</summary>
+            <label for="facts">YAML mapping</label
+            ><textarea id="facts" rows="6">{}</textarea>
+          </details>
+          <button id="save">Save locally</button>
+          <p class="small">
+            Stored only in this laptop’s ignored private folder. Audio is not
+            recorded locally. Transcripts expire after 30 days.
+          </p>
+        </aside>
+      </div>
+      <section class="card">
+        <div class="row">
+          <h2>Practice desk</h2>
+          <button id="kill" class="danger">Enable kill switch</button>
+        </div>
+        <p id="spend"></p>
+        <p class="muted">
+          Voice: $0.05/min. Each start reserves $0.60. Estimates remain
+          conservative until final usage arrives. Paid API calls are disabled
+          until explicitly enabled by the operator.
+        </p>
+        <div id="history"></div>
+      </section>
+      <section class="card">
+        <h2>Live transcript</h2>
+        <p class="small">
+          Founder audio is mixed. Speaker names and talk time cannot be reliably
+          attributed in laptop mode.
+        </p>
+        <div id="transcript" aria-live="off"></div>
+      </section>
+      <footer>
+        Practice archetypes, not real investors. Run only in your team’s
+        practice calls.
+      </footer>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

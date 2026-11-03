@@ -1,0 +1,11 @@
+.git
+node_modules
+private
+output
+tmp
+selfhost/generated
+.env*
+*.sqlite*
+__pycache__
+
+**/._*

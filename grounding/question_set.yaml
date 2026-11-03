@@ -1,0 +1,288 @@
+- id: T1
+  phase: T
+  priority: 1
+  question: Who is on the founding team, and who does what?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: T2
+  phase: T
+  priority: 1
+  question: How have you tested your ability to work together under pressure?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: T3
+  phase: T
+  priority: 2
+  question: What did you learn from your previous work that changed how you build
+    this company?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: T4
+  phase: T
+  priority: 1
+  question: Why are you starting this company now?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: T5
+  phase: T
+  priority: 1
+  question: What expertise gives your team an advantage on this problem?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: T6
+  phase: T
+  priority: 1
+  question: Tell us something about you that isn't on LinkedIn.
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: T7
+  phase: T
+  priority: 1
+  question: What's the hardest decision you've made together, and who made the call?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: T8
+  phase: T
+  priority: 1
+  question: Who sells? Who's talking to customers every week?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: T9
+  phase: T
+  priority: 2
+  question: Which founders are working on this full-time?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: T10
+  phase: T
+  priority: 1
+  question: Are there outside commitments or IP obligations that could affect the
+    company?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: T11
+  phase: T
+  priority: 1
+  question: Who are your first two hires?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: R1
+  phase: R
+  priority: 1
+  question: What's your traction, in one number?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: R2
+  phase: R
+  priority: 2
+  question: How much of your revenue comes from the current product?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: R3
+  phase: R
+  priority: 2
+  question: Describe your strongest customer commitment and when it becomes revenue.
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: R4
+  phase: R
+  priority: 2
+  question: Why would a customer pay you rather than build this themselves?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: R5
+  phase: R
+  priority: 1
+  question: How many users do you have? How many came back last week?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: R6
+  phase: R
+  priority: 1
+  question: How do you distinguish meaningful usage from traffic that does not convert?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: R7
+  phase: R
+  priority: 1
+  question: What did you ship since you applied?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: R8
+  phase: R
+  priority: 1
+  question: What did your users teach you that changed the product?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: R9
+  phase: R
+  priority: 1
+  question: How has revenue changed over the last two months?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: R10
+  phase: R
+  priority: 1
+  question: If we met again in four weeks, what number will be different?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: M1
+  phase: M
+  priority: 1
+  question: Who's your closest competitor, and why do you win?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: M2
+  phase: M
+  priority: 1
+  question: What happens when Claude or OpenAI ships this as a feature?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: M3
+  phase: M
+  priority: 1
+  question: Why now? And don't say AI.
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: M4
+  phase: M
+  priority: 1
+  question: Which customer segment is your initial focus?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: M5
+  phase: M
+  priority: 1
+  question: "What would this business look like at scale: who pays, and how much?"
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: M6
+  phase: M
+  priority: 1
+  question: What do you understand about this market that others don't?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: M7
+  phase: M
+  priority: 1
+  question: How did you estimate your addressable market from actual customer needs?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: P1
+  phase: P
+  priority: 1
+  question: Walk me through the core user workflow.
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: P2
+  phase: P
+  priority: 2
+  question: Which parts of the product are your own technology, and which are
+    third-party services?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: P3
+  phase: P
+  priority: 1
+  question: How do you measure the performance that matters to your users?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: P4
+  phase: P
+  priority: 1
+  question: What is the largest real workload your product has handled?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: P5
+  phase: P
+  priority: 1
+  question: How do you measure product quality and catch failures?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: P6
+  phase: P
+  priority: 2
+  question: How has your positioning changed, and what evidence supports the
+    current focus?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: L1
+  phase: L
+  priority: 2
+  question: How much have you raised, from whom, on what terms?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: L2
+  phase: L
+  priority: 1
+  question: Can the team meet the selected program’s participation requirements?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: L3
+  phase: L
+  priority: 2
+  question: Are there any practical constraints that would affect participation?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: L4
+  phase: L
+  priority: 1
+  question: How is the company structured, and who owns its intellectual property?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: L5
+  phase: L
+  priority: 1
+  question: What do you want from this accelerator beyond capital?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+  programs:
+    - yc
+- id: L6
+  phase: L
+  priority: 1
+  question: Can you send us your cap table?
+  guard: Use premises only if supported by submitted application or live answers.
+    Otherwise ask an open question without the premise.
+- id: YC1
+  phase: P
+  priority: 2
+  programs:
+    - yc
+  question: What did your users do this week that surprised you?
+- id: YC2
+  phase: M
+  priority: 2
+  programs:
+    - yc
+  question: What do you understand about this market that others miss?
+- id: YC3
+  phase: R
+  priority: 2
+  programs:
+    - yc
+  question: What has changed since you wrote the application?
+- id: SR1
+  phase: T
+  priority: 2
+  programs:
+    - speedrun
+  question: Which past experience makes this team unusually suited to this problem?
+- id: SR2
+  phase: P
+  priority: 2
+  programs:
+    - speedrun
+  question: What did you ship last week, and what did it teach you?
+- id: SR3
+  phase: L
+  priority: 2
+  programs:
+    - speedrun
+  question: What measurable milestone would you reach during the Speedrun residency?
+- id: SR4
+  phase: M
+  priority: 2
+  programs:
+    - speedrun
+  question: What is your first repeatable distribution channel?

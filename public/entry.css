@@ -1,0 +1,578 @@
+/* Entry surfaces share one composition; the in-call workspace stays unchanged. */
+body.entry-home::before,
+body.preview-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, #0008, #0009 55%, #0003),
+    url("/entry-coast.webp") right center / cover no-repeat;
+}
+body.entry-home .topbar,
+body.preview-page .topbar {
+  position: relative;
+  z-index: 2;
+  background: transparent;
+}
+body.entry-home main,
+body.preview-page main {
+  position: relative;
+  z-index: 1;
+}
+body.entry-home .powered-by,
+body.preview-page .powered-by {
+  z-index: 3;
+}
+body.entry-home .welcome,
+body.entry-home .welcome:has(#code-entry:not([hidden])) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  gap: 28px;
+  padding: 36px 24px 56px;
+  scrollbar-width: thin;
+  scrollbar-color: #444 transparent;
+}
+body.entry-home.onboarding .welcome {
+  justify-content: safe center;
+  padding-top: 40px;
+}
+body.entry-home .onboarding-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 640px);
+  gap: 12px;
+  margin: 0;
+  text-align: center;
+}
+body.entry-home .onboarding-heading h1 {
+  font-size: clamp(28px, 3.2vw, 38px);
+  font-weight: 550;
+  letter-spacing: -1.3px;
+  line-height: 1.15;
+  margin: 0;
+}
+body.entry-home .onboarding-heading p {
+  color: #a6a6a6;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+body.entry-home .entry-card {
+  width: min(100%, 500px);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+#entry-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: #ffffff08;
+  margin-bottom: 24px;
+}
+#entry-modes button {
+  min-height: 32px;
+  padding: 6px 16px;
+  line-height: 20px;
+  background: transparent;
+  color: #aaa;
+  margin: 0;
+  font-size: 13px;
+  border-radius: 7px;
+}
+#entry-modes button[aria-selected="true"] {
+  background: #ffffff12;
+  color: #fff;
+  box-shadow: 0 2px 8px #0004;
+}
+#entry-modes button:hover {
+  color: #fff;
+  background: #ffffff0d;
+}
+body:not(.entry-home) #entry-modes,
+body:not(.entry-home) #entry-loading {
+  display: none;
+}
+#entry-loading {
+  text-align: center;
+  color: #999;
+  margin: 0;
+}
+body.entry-home label {
+  font-size: 12px;
+  color: #bcbcbc;
+}
+body.preview-page .prejoin-form input,
+body.entry-home input:not([type="checkbox"]),
+body.entry-home textarea,
+body.entry-home #application-form .profile-trigger {
+  background: #ffffff0d;
+  border: 1px solid #ffffff12;
+  border-radius: 12px;
+  color: #f4f4f4;
+  box-shadow: 0 4px 12px #0001;
+  transition:
+    border-color 180ms ease-out,
+    background-color 180ms ease-out;
+}
+body.preview-page .prejoin-form input:hover,
+body.entry-home input:not([type="checkbox"]):hover,
+body.entry-home textarea:hover,
+body.entry-home #application-form .profile-trigger:hover {
+  background: #ffffff12;
+  border-color: #ffffff30;
+}
+body.preview-page .prejoin-form input:focus-visible,
+body.entry-home input:not([type="checkbox"]):focus-visible,
+body.entry-home textarea:focus-visible,
+body.entry-home #application-form .profile-trigger:focus-visible {
+  outline: none;
+  border-color: #bdbdbd;
+}
+body.entry-home #application-form > label {
+  margin: 18px 0 8px;
+}
+body.entry-home #application-form > label:first-child {
+  margin-top: 0;
+}
+body.entry-home #application-form .profile-trigger {
+  min-height: 46px;
+  padding: 12px 14px;
+}
+body.entry-home #draft-application {
+  height: 132px;
+  min-height: 132px;
+  padding: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: none;
+}
+body.entry-home .upload-separator {
+  margin: 12px 0;
+  gap: 14px;
+}
+body.entry-home .upload-separator::before,
+body.entry-home .upload-separator::after {
+  background: #ffffff17;
+}
+body.entry-home #draft-dropzone {
+  min-height: 60px;
+  padding: 12px;
+  margin: 0;
+  border-color: #ffffff27;
+  border-radius: 12px;
+  background: #ffffff03;
+  gap: 4px;
+}
+body.entry-home #draft-dropzone:hover,
+body.entry-home #draft-dropzone.is-dragging {
+  background: #ffffff0c;
+  border-color: #ffffff50;
+}
+body.entry-home .upload-hint {
+  font-size: 11px;
+  color: #999;
+}
+body.entry-home #application-form details {
+  margin: 16px 0 0;
+}
+body.entry-home #application-form summary {
+  min-height: 32px;
+  font-size: 12px;
+}
+body.entry-home .draft-controls {
+  margin: 12px 0 20px;
+  gap: 12px;
+}
+body.entry-home .draft-controls .check,
+body.entry-home .draft-controls .text-button {
+  margin: 0;
+  font-size: 12px;
+}
+body.entry-home #new {
+  margin: 0;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 13px;
+  box-shadow: 0 2px 10px #0004;
+}
+body.entry-home .consent-footnote {
+  font-size: 11px;
+  line-height: 1.65;
+  margin: 16px 0 0;
+  color: #a4a4a4;
+}
+body.entry-home .code-entry {
+  display: block;
+  width: 100%;
+}
+body.entry-home .code-entry label {
+  display: block;
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+body.entry-home .code-entry-row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+body.entry-home #room-code {
+  width: 100%;
+  flex: auto;
+  min-height: 52px;
+  padding: 14px 16px;
+  font-size: 16px;
+}
+body.entry-home .code-entry button {
+  min-height: 48px;
+  font-size: 13px;
+  border-radius: 12px;
+}
+body.entry-home #code-error,
+body.entry-home #creator-error {
+  width: 100%;
+  margin: 10px 0 0;
+  padding: 0;
+  text-align: left;
+  background: none;
+  color: #ff9b9b;
+  font-size: 12px;
+}
+body.entry-home #no-invite .creator-access-note > p {
+  color: #a6a6a6;
+  font-size: 13px;
+  text-align: center;
+  margin: 0 0 24px;
+}
+#creator-entry label {
+  margin: 0 0 8px;
+}
+#creator-entry input {
+  min-height: 48px;
+}
+#creator-entry button {
+  margin-top: 20px;
+  min-height: 48px;
+  border-radius: 12px;
+}
+#creator-shortcut {
+  display: none;
+}
+body.entry-joining .creator-access-note {
+  display: none;
+}
+body.entry-joining #creator-shortcut {
+  display: block;
+  margin: 20px auto 0;
+  padding: 8px;
+  color: #aaa;
+  font-size: 12px;
+}
+#creator-shortcut:hover {
+  color: #fff;
+}
+body.entry-home [aria-invalid="true"] {
+  border-color: #ff9b9b;
+}
+@media (max-width: 680px) {
+  body.entry-home::before {
+    background-image: linear-gradient(#0008, #0009), url("/entry-coast.webp");
+    background-position: 75% center;
+  }
+  body.entry-home .welcome,
+  body.entry-home.onboarding .welcome {
+    padding: 32px 24px 64px;
+    gap: 24px;
+  }
+  body.entry-home.onboarding .welcome {
+    padding-top: 20px;
+  }
+  body.entry-home .entry-card {
+    padding: 0;
+  }
+  body.entry-home .onboarding-heading h1 {
+    font-size: 28px;
+    letter-spacing: -0.8px;
+  }
+  body.entry-home .onboarding-heading p {
+    font-size: 13px;
+    max-width: 290px;
+  }
+  body.entry-home #draft-application,
+  body.entry-home input {
+    font-size: 16px;
+  }
+  body.entry-home #draft-application {
+    height: 140px;
+  }
+  body.entry-home .draft-controls {
+    align-items: center;
+  }
+  body.entry-home .draft-controls .text-button {
+    font-size: 11px;
+    padding: 4px 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.entry-home * {
+    transition: none !important;
+  }
+}
+
+/* Compact entry: keep the primary action visible at laptop heights. */
+body.entry-home .welcome,
+body.entry-home.onboarding .welcome {
+  gap: 20px;
+  padding: 16px 24px 24px;
+}
+body.entry-home .onboarding-heading {
+  gap: 8px;
+}
+body.entry-home #entry-modes {
+  margin-bottom: 16px;
+}
+body.entry-home #application-form > label {
+  margin-top: 12px;
+}
+body.entry-home #draft-application {
+  height: 64px;
+  min-height: 64px;
+  resize: none;
+  padding: 10px 12px;
+}
+body.entry-home #draft-dropzone {
+  min-height: 64px;
+  height: 64px;
+  padding: 10px 12px;
+}
+body.entry-home .upload-separator {
+  margin: 8px 0;
+}
+body.entry-home #application-form details {
+  margin-top: 8px;
+}
+body.entry-home .draft-controls {
+  margin: 8px 0 12px;
+}
+body.entry-home .consent-footnote {
+  text-align: center;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+@media (max-height: 760px) and (min-width: 700px) {
+  body.entry-home .welcome,
+  body.entry-home.onboarding .welcome {
+    gap: 14px;
+    padding-top: 8px;
+  }
+  body.entry-home .onboarding-heading h1 {
+    font-size: 30px;
+  }
+  body.entry-home #entry-modes {
+    margin-bottom: 12px;
+  }
+}
+
+@media (pointer: coarse) {
+  #entry-modes button {
+    min-height: 40px;
+  }
+}
+
+/* Shared frosted treatment for translucent entry fields and device controls. */
+body.entry-home input:not([type="checkbox"]),
+body.entry-home textarea,
+body.entry-home #application-form .profile-trigger,
+body.entry-home #draft-dropzone,
+body.preview-page .prejoin-form input,
+body.preview-page .preview-controls {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* Anchor the entry to the viewport, never to the changing form height. */
+body.entry-home .welcome,
+body.entry-home.onboarding .welcome,
+body.entry-home .welcome:has(#code-entry:not([hidden])) {
+  justify-content: flex-start;
+  padding: clamp(16px, calc((100svh - 760px) / 2), 100px) 24px 24px;
+  gap: 20px;
+  overflow-anchor: none;
+}
+body.entry-home .welcome > * { flex-shrink: 0; }
+@media (max-width: 680px) {
+  body.entry-home .onboarding-heading h1 { min-height: 1.15em; }
+  body.entry-home .onboarding-heading p { min-height: 3em; }
+}
+
+/* Shared single-line entry field sizing, including the camera-check screen. */
+:root { --entry-field-height: 46px; --entry-field-padding: 12px 14px; }
+body.entry-home input:not([type="checkbox"]),
+body.preview-page .prejoin-form input {
+  height: var(--entry-field-height);
+  min-height: var(--entry-field-height);
+  padding: var(--entry-field-padding);
+  font-size: 13px;
+  line-height: 20px;
+  box-sizing: border-box;
+}
+.prejoin-heading { display: grid; gap: 8px; }
+.prejoin-heading p {
+  margin: 0;
+  color: var(--text-secondary, #aaa);
+  font-size: 14px;
+  line-height: 1.5;
+}
+body.preview-page .preview-controls { border-radius: 22px; }
+body.preview-page .preview-controls .preview-toggle { border-radius: 16px; }
+@media (max-width: 680px) {
+  body.entry-home input:not([type="checkbox"]),
+  body.preview-page .prejoin-form input { font-size: 16px; }
+}
+
+@media (max-width: 760px) {
+  body.preview-page .prejoin-form {
+    padding-inline: 0;
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+body.preview-page #welcome { position: relative; padding-top: 88px; }
+.prejoin-room-pill {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  min-height: 44px;
+  padding: 2px 14px;
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  background: var(--field-bg);
+  color: var(--text-primary);
+  font-size: 12px;
+  box-shadow: 0 2px 8px #00000008;
+}
+.room-pill-label { color: var(--text-secondary); }
+.room-pill-code { font-variant-numeric: tabular-nums; user-select: text; white-space: nowrap; }
+.prejoin-room-pill button { width: 36px; min-height: 36px; padding: 8px; margin: 0; background: transparent; border-radius: 50%; }
+.prejoin-room-pill .icon { width: 16px; height: 16px; }
+.room-pill-divider { height: 18px; width: 1px; background: var(--field-border); margin: 0 3px; }
+.room-pill-count { display: flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--text-secondary); }
+
+/* Room metadata shares the header baseline; narrow screens get a dedicated row. */
+body.preview-page .topbar { position: relative; }
+body.preview-page .page-theme-toggle { display: none; }
+.prejoin-settings { margin-left: auto; }
+.prejoin-room-pill {
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-height: 34px;
+  padding: 0 12px;
+  gap: 6px;
+}
+:root[data-theme] .prejoin-room-pill button,
+:root[data-theme] .prejoin-room-pill button:hover {
+  width: 28px;
+  height: 30px;
+  min-height: 30px;
+  padding: 5px;
+  margin-left: -3px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+:root[data-theme] .prejoin-room-pill button:hover { color: var(--text-primary); }
+.prejoin-room-pill .room-pill-divider { height: 14px; margin: 0 4px; }
+@media (max-width: 760px) {
+  .prejoin-room-pill { top: calc(100% + 12px); transform: translateX(-50%); }
+}
+body.in-call .topbar { position: relative; }
+@media (min-width: 681px) and (max-width: 1000px) {
+  body.in-call { --header: 100px; }
+  body.in-call .topbar { height: var(--header); padding-bottom: 40px; }
+  body.in-call .prejoin-room-pill { top: auto; bottom: 6px; transform: translateX(-50%); }
+}
+@media (max-width: 680px) {
+  body.in-call { --header: 140px; }
+  body.in-call .topbar { height: var(--header); grid-template-rows: 44px 40px 48px; }
+  body.in-call .prejoin-room-pill {
+    position: static;
+    transform: none;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: center;
+    max-width: 100%;
+  }
+  body.in-call .host-controls { grid-row: 3; }
+}
+
+/* Related interview action + time share a compact, stable segmented surface. */
+.session-pill {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-left: auto;
+  min-height: 34px;
+  padding: 2px;
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  background: var(--field-bg);
+  box-shadow: 0 2px 8px #00000008;
+}
+.session-action { display: flex; }
+:root[data-theme] .session-pill :is(#start, #end) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 12px;
+  margin: 0;
+  border: none;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  box-shadow: none;
+}
+.session-pill .icon { width: 16px; height: 16px; }
+.session-divider { width: 1px; height: 14px; margin-left: 8px; background: var(--field-border); }
+:root[data-theme] .session-pill #clock {
+  min-width: 60px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 30px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+:root[data-theme] .session-pill #clock.running { color: var(--text-primary); }
+.session-pill #guest-note { padding: 0 10px; font-size: 12px; color: var(--text-secondary); }
+.prejoin-room-pill [data-tooltip]::after {
+  top: calc(100% + 10px);
+  bottom: auto;
+}
+@media (max-width: 680px) {
+  body.in-call .session-pill {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-self: center;
+    margin: 0;
+  }
+}

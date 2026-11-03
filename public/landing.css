@@ -1,0 +1,39 @@
+* { box-sizing: border-box; }
+body.marketing-page { margin: 0; min-height: 100svh; display: flex; flex-direction: column; font-family: Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background: var(--page-bg); color: var(--text-primary); }
+body.marketing-page::before { content:""; position:fixed; inset:0; z-index:-1; background:url('/theme-dark.png') center bottom / cover no-repeat; }
+:root[data-theme="light"] body.marketing-page::before { background-image:url('/theme-light.png'); }
+a { color:inherit; }
+.landing-header { display:flex; align-items:center; justify-content:flex-end; gap:20px; padding:20px 28px; min-height:76px; }
+.landing-header a { font-size:13px; text-decoration:none; color:var(--text-secondary); }
+.landing-header a:hover { color:var(--text-primary); }
+.landing-hero { flex:1; width:min(900px,100%); padding:20px 24px 36px; margin:auto; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+.landing-wordmark { font-size:25px; font-weight:750; letter-spacing:-1px; margin-bottom:24px; }
+.interview-count { padding:7px 13px; border:1px solid var(--field-border); border-radius:999px; font-size:12px; background:var(--field-bg); backdrop-filter:blur(12px); margin-bottom:22px; color:var(--text-secondary); }
+[hidden] { display:none!important; }
+h1 { font-size:clamp(36px,5.3vw,68px); line-height:1.06; font-weight:650; letter-spacing:-.055em; margin:0; }
+.landing-subhead { font-size:clamp(15px,1.6vw,18px); line-height:1.6; max-width:610px; margin:24px 0 28px; color:var(--text-secondary); }
+.landing-cta { display:flex; align-items:center; justify-content:center; min-height:52px; min-width:240px; padding:14px 28px; border-radius:15px; background:var(--action-bg); color:var(--action-text); text-decoration:none; font-size:16px; font-weight:600; transition:opacity 150ms; }
+.landing-cta:hover { opacity:.88; }
+.landing-meta { font-size:12px; margin:16px 0 0; color:var(--text-secondary); }
+.landing-details { max-width:490px; margin:20px 0 0; color:var(--text-secondary); font-size:11px; line-height:1.6; }
+.landing-details summary { cursor:pointer; }
+.landing-details p { margin:8px 0 0; }
+.landing-footer { text-align:center; padding:12px 24px 20px; color:var(--text-muted); font-size:11px; display:flex; flex-direction:column; align-items:center; gap:9px; }
+.landing-powered { text-decoration:none; display:flex; align-items:center; gap:7px; }
+.landing-powered strong { color:var(--text-primary); font-size:15px; letter-spacing:-.5px; }
+.landing-footer div { display:flex; gap:8px; }
+.landing-footer small { font-size:10px; }
+a:focus-visible, summary:focus-visible { outline:1px solid var(--text-primary); outline-offset:4px; }
+@media(max-width:600px) { .landing-header {padding:20px 24px;} .landing-hero {padding:12px 24px 24px;} .landing-subhead {margin:20px 0 24px;} .landing-wordmark {font-size:23px;margin-bottom:20px;} body.marketing-page::before {background-position:70% bottom;} }
+@media(max-height:740px) and (min-width:601px) { .landing-header{min-height:60px;padding:12px 24px;} .landing-hero{padding:8px 24px 16px;} .landing-wordmark{margin-bottom:16px;} h1{font-size:52px;} .landing-subhead{margin:18px 0;} .landing-details{margin-top:12px;} }
+.landing-powered .mostlyright-logo { width:110px; height:auto; color:var(--text-primary); }
+body.marketing-page { position:relative; isolation:isolate; }
+.landing-header theme-toggle button { background:transparent; border:0; color:var(--text-primary); cursor:pointer; width:40px; height:40px; border-radius:12px; padding:10px; }
+.landing-header theme-toggle button:hover { background:var(--field-hover); }
+.landing-header theme-toggle svg { width:20px; height:20px; }
+
+.landing-actions {display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;}
+.landing-selfhost {display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:14px 22px;border-radius:15px;background:var(--field-bg);border:1px solid var(--field-border);color:var(--text-secondary);font-size:15px;font-weight:600;text-decoration:none;transition:color 150ms,background 150ms,border-color 150ms;}
+.landing-selfhost:hover {color:var(--text-primary);background:var(--field-hover);border-color:var(--text-muted);}
+.landing-selfhost svg {flex:none;}
+@media(max-width:480px){.landing-actions{width:min(300px,100%);flex-direction:column;gap:10px;}.landing-actions a{width:100%;}}

@@ -1,0 +1,23 @@
+version: 1
+id: speedrun-10
+title: Speedrun · founder interview
+duration_seconds: 600
+cutoff_seconds: 30
+voice: cedar
+partners:
+  - A
+  - B
+  - C
+greeting: What are you building, and what makes your team suited to this problem?
+instructions: Be warm, curious, analytical and concise. Probe founder
+  experience, shipping speed, customer learning, product differentiation and
+  distribution. Base specific questions on the submitted application and live
+  answers. Ask one question at a time. Never invent facts or imply accelerator
+  affiliation.
+phase_lengths:
+  - 75
+  - 135
+  - 135
+  - 150
+  - 75
+  - 30

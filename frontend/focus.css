@@ -1,0 +1,27 @@
+/* Shared input modality: clicks retain focus without a persistent outer ring. */
+html[data-input-mode="pointer"] :is(button, a, input, textarea, select, summary, [tabindex]):focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+html[data-input-mode="pointer"] :is(.upload-dropzone, .upload-label):focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+}
+html[data-input-mode="pointer"] :is(input:not([type="checkbox"]), textarea, select, .profile-trigger):focus:not([aria-invalid="true"]) {
+  border-color: var(--field-border-hover, #ffffff50) !important;
+}
+/* Keyboard focus highlights the existing input border; buttons use a thin inset ring. */
+html[data-input-mode="keyboard"] :is(button, a, summary, [tabindex]):focus-visible {
+  outline: 1px solid var(--field-focus, #aaa) !important;
+  outline-offset: -2px !important;
+}
+html[data-input-mode="keyboard"] :is(input:not([type="checkbox"]), textarea, select, .profile-trigger):focus-visible {
+  outline: none !important;
+  border-color: var(--field-border-hover, #ffffff50) !important;
+}
+html[data-input-mode="keyboard"] :is(input, textarea)[aria-invalid="true"]:focus-visible {
+  border-color: #ff9b9b !important;
+}
+html[data-input-mode="keyboard"] :is(.react-option, .settings-item):focus-visible {
+  outline: none !important;
+}

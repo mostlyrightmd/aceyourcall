@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "id": "yc-10",
+  "title": "YC \u00b7 founder interview",
+  "duration_seconds": 600,
+  "cutoff_seconds": 25,
+  "voice": "marin",
+  "partners": ["A", "B", "C"],
+  "greeting": "Let's begin. What are you building, and who needs it?",
+  "instructions": "Be firm, curious, concise, and professional. Pursue specific evidence and avoid repeating a question already answered.",
+  "phase_lengths": [75, 135, 135, 150, 75, 30],
+}
