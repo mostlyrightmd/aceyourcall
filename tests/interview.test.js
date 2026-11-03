@@ -148,3 +148,63 @@ test("wrap-up clock suppresses silence recovery, long-answer and quiet-founder p
   assert.deepEqual(clock.tick(599), []);
   assert.ok(clock.tick(600).some((a) => a.reason === "hard_stop"));
 });
+
+test("clock gives silent time context without periodic forced topic changes", () => {
+  const clock = new Clock(
+    p,
+    schedule(p, () => 0),
+  );
+  const actions = [];
+  for (let seconds = 0; seconds <= 600; seconds++) {
+    clock.activity(seconds, true, false);
+    actions.push(...clock.tick(seconds).map((a) => ({ ...a, seconds })));
+  }
+  assert.ok(actions.filter((a) => a.reason === "time").length >= 12);
+  assert.equal(actions.filter((a) => a.reason === "topic_budget").length, 0);
+  assert.equal(actions.filter((a) => a.reason === "hard_stop").length, 1);
+  assert.ok(!actions.some((a) => a.reason === "time" && a.seconds >= 570));
+  assert.ok(
+    !actions.some(
+      (a, i) =>
+        a.reason === "time" &&
+        actions
+          .slice(i + 1)
+          .some((b) => b.reason === "time" && b.seconds === a.seconds),
+    ),
+  );
+});
+
+test("regular phase advice is background context; closing remains a firm instruction", async () => {
+  const { timeMessage } = await import("../src/interview.js");
+  for (const phase of ["intro", "T", "R", "M", "L"]) {
+    assert.equal(
+      phaseMessage(phase, 300, [], []).type,
+      "session.thinking.append",
+    );
+  }
+  assert.equal(
+    phaseMessage("close", 30, [], []).type,
+    "session.instructions.append",
+  );
+  assert.match(timeMessage(30).content, /no new questions/);
+  assert.doesNotMatch(timeMessage(30).content, /ask a short final/);
+});
+
+test("unpunctuated voice questions retain coverage and allow answer thinking time", () => {
+  const text = "Got it. What's that one gardener doing with it week to week";
+  assert.deepEqual(
+    questionHistory([{ speaker: "partner", text, start_ms: 0, end_ms: 3000 }]),
+    [text],
+  );
+  const clock = new Clock(
+    p,
+    schedule(p, () => 0),
+  );
+  clock.output(text, 3);
+  assert.ok(!clock.tick(11).some((a) => a.reason === "silence_recovery"));
+  assert.ok(
+    clock
+      .tick(20)
+      .some((a) => a.reason === "silence_recovery" && a.waitingForAnswer),
+  );
+});

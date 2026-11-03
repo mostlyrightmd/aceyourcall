@@ -1,5 +1,5 @@
 import { createHash, randomInt } from "node:crypto";
-import { interviewInstructions } from "./interview.js";
+import { interviewInstructions, isInterviewQuestion } from "./interview.js";
 export const RATE = 0.05;
 export const RESERVE = 0.6; // 12-minute absolute ceiling, including startup; no backend delegation.
 export function validateProfile(p) {
@@ -142,7 +142,7 @@ export class Clock {
     this.answerStart = null;
     this.lastInput = null;
     this.interrupted = false;
-    this.topicAt = 0;
+    this.clockBucket = 0;
     this.lastHeard = 0;
     this.lastSpoke = 0;
     this.activityAt = -100;
@@ -161,7 +161,7 @@ export class Clock {
     this.outputText = (this.outputText + text).slice(-600);
     this.lastSpoke = received;
     // A brief acknowledgment must not reset the founder's long-answer clock.
-    if (received - this.lastHeard > 4 || this.outputText.includes("?")) {
+    if (received - this.lastHeard > 4 || isInterviewQuestion(this.outputText)) {
       this.answerStart = null;
       this.interrupted = false;
     }
@@ -176,7 +176,6 @@ export class Clock {
     for (const p of this.phases)
       if (seconds >= p.at && !this.seen.has(p.phase)) {
         this.seen.add(p.phase);
-        this.topicAt = seconds;
         actions.push({ reason: "phase", phase: p.phase });
       }
     for (const t of [240, 420])
@@ -195,7 +194,7 @@ export class Clock {
       (this.humanSpeaking || this.partnerSpeaking);
     const silence = seconds - Math.max(this.lastHeard, this.lastSpoke);
     const waitingForAnswer =
-      this.lastSpoke > this.lastHeard && this.outputText.includes("?");
+      this.lastSpoke > this.lastHeard && isInterviewQuestion(this.outputText);
     if (
       !audible &&
       silence >= (waitingForAnswer ? 16 : 7) &&
@@ -214,9 +213,12 @@ export class Clock {
       this.interrupted = true;
       actions.push({ reason: "long_answer" });
     }
-    if (seconds - this.topicAt >= 75) {
-      this.topicAt = seconds;
-      actions.push({ reason: "topic_budget" });
+    // Keep the model informed without forcing a new topic or interrupting speech.
+    const bucket = Math.floor(seconds / 30);
+    if (bucket > this.clockBucket) {
+      this.clockBucket = bucket;
+      if (!actions.some((a) => a.reason === "phase"))
+        actions.push({ reason: "time" });
     }
     return actions;
   }

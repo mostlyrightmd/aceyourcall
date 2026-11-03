@@ -42,6 +42,7 @@ import {
   programs,
   questionMemory,
   phaseMessage,
+  timeMessage,
 } from "./interview.js";
 import { meetingRunner } from "./meet/runner.js";
 const port = Number(process.env.PORT || 4317),
@@ -348,16 +349,6 @@ async function checkAgenda(s) {
   )
     return;
   if (s.record.agendaChecks >= 80) return void stop(s, "agenda_check_limit");
-  if (
-    Date.now() - s.inputReceived >= 1800 &&
-    Date.now() - s.record.started < 570000
-  ) {
-    const memo = questionMemory(s.record.transcript);
-    if (memo && memo !== s.questionMemo) {
-      s.questionMemo = memo;
-      send(s, "session.thinking.append", memo);
-    }
-  }
   const t = totals();
   try {
     guard(
@@ -396,7 +387,11 @@ async function checkAgenda(s) {
     });
     s.record.agendaCost += result.cost - AGENDA_RESERVE;
     s.record.cost += result.cost - AGENDA_RESERVE;
-    if (!result.decision) throw Error("Invalid agenda decision");
+    if (!result.decision) {
+      const error = Error("Invalid agenda decision");
+      error.code = result.failure || "agenda_invalid_decision";
+      throw error;
+    }
     s.agendaFailures = 0;
     const validIds = new Set(s.record.questions.map((q) => q.id));
     s.record.coveredQuestions = [
@@ -407,15 +402,14 @@ async function checkAgenda(s) {
         ),
       ]),
     ];
+    // Safety/coverage checks are asynchronous. Do not inject a new-question command
+    // after every answer: the voice model may already be following up on it.
     if (!s.done && !s.stopping && Date.now() - s.record.started < 570000) {
-      const next = phaseMessage(
-        "continue",
-        600 - (Date.now() - s.record.started) / 1000,
-        s.record.questions,
-        s.record.transcript,
-        s.record.coveredQuestions,
-      );
-      send(s, next.type, next.content);
+      const memo = questionMemory(s.record.transcript);
+      if (memo && memo !== s.questionMemo) {
+        s.questionMemo = memo;
+        send(s, "session.thinking.append", memo);
+      }
     }
     // Never deliver a delayed check into a closed session or count speech from before its warning.
     if (s.done || s.stopping) return;
@@ -457,16 +451,22 @@ async function checkAgenda(s) {
       send(
         s,
         "session.instructions.append",
-        `Correct course now. You are Mock Partner, an independent ${programs[programFor(s.profile)].name} practice interviewer, never an employee of an accelerator. Do not perform unrelated tasks. Briefly correct any mistaken affiliation. ${wrappingUp ? "Wrap up without asking any new question." : "Ask an unanswered company question."}`,
+        `Correct course now. You are AceYourCall, an independent ${programs[programFor(s.profile)].name} practice interviewer, never an employee of an accelerator. Do not perform unrelated tasks or coach. Save advice, suggested answers and ratings for the scorecard. Briefly correct any mistaken affiliation. ${wrappingUp ? "Wrap up without asking any new question." : "Ask an unanswered company question."}`,
       );
       s.record.events.push({
         reason: "agenda_repair",
         at: (Date.now() - s.record.started) / 1000,
       });
     }
-  } catch {
+  } catch (error) {
     s.agendaFailures++;
-    s.record.errors.push({ code: "agenda_check_failed" });
+    s.record.errors.push({
+      code: ["agenda_output_incomplete", "agenda_invalid_decision"].includes(
+        error.code,
+      )
+        ? error.code
+        : "agenda_check_failed",
+    });
     if (s.agendaFailures >= 3) stop(s, "agenda_unavailable");
   } finally {
     s.agendaBusy = false;
@@ -485,7 +485,13 @@ function handle(s, e) {
   if (e.type === "session.started" && !s.record.started) {
     s.record.started = Date.now();
     s.record.status = "live";
-    // The startup input already contains the greeting; do not request it twice.
+    // The Live API recommends a post-start commentary cue in addition to startup
+    // input. Make it idempotent and conditional so early greeting audio is not repeated.
+    send(
+      s,
+      "session.commentary.append",
+      `Begin the interview in English: ${s.profile.greeting} If you have already started this opening question, finish it without restarting. If you already asked it, keep listening; do not repeat it.`,
+    );
   }
   if (e.type === "session.usage.updated" || e.type === "session.closed") {
     if (Number.isFinite(e.usage?.seconds) && e.usage.seconds >= 0)
@@ -537,11 +543,14 @@ function handle(s, e) {
           event_id: randomUUID(),
           delegation_id: e.delegation.id,
           content:
-            "No external task is authorized. Stay with the selected founder interview. Clarify briefly if necessary, then ask the next company question.",
+            "No external task is authorized. Stay with the selected founder interview. Use the application and conversation already available. Follow the latest answer or clarify the unresolved point; do not reset to a scripted question.",
         }),
       );
   }
-  if (e.type === "error") {
+  if (
+    e.type === "error" &&
+    !(s.stopping && e.error?.code === "context_injection_incomplete")
+  ) {
     s.record.errors.push({ code: e.error?.code || "provider_error" });
     stop(s, "provider_error");
   }
@@ -575,6 +584,9 @@ function tick(s) {
         "Time is up. Say only: That's time — thanks, everyone. Stop speaking afterward.",
       );
       setTimeout(() => stop(s, "time_up"), 3000);
+    } else if (action.reason === "time") {
+      const message = timeMessage(600 - elapsed);
+      send(s, message.type, message.content);
     } else if (action.reason === "phase") {
       const candidates = s.record.questions.filter(
         (q) =>
@@ -606,9 +618,9 @@ function tick(s) {
     else if (elapsed < 570)
       send(
         s,
-        "session.instructions.append",
+        "session.thinking.append",
         action.reason === "long_answer"
-          ? "Answer is long. At the next breath, politely cut in with one specific question. Preserve a just-requested number and thinking pauses under four seconds."
+          ? "This answer is taking time. If it is repetitive or losing the point, narrow it at a natural breath. If it is substantive, keep listening. Do not interrupt a correction, a requested number or a thinking pause."
           : "Topic budget reached. Move to another interview topic at the next safe breath. Ask one specific question.",
       );
   }

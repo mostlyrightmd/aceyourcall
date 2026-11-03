@@ -12,7 +12,7 @@ a { color:inherit; }
 [hidden] { display:none!important; }
 h1 { font-size:clamp(36px,5.3vw,68px); line-height:1.06; font-weight:650; letter-spacing:-.055em; margin:0; }
 .landing-subhead { font-size:clamp(15px,1.6vw,18px); line-height:1.6; max-width:610px; margin:24px 0 28px; color:var(--text-secondary); }
-.landing-cta { display:flex; align-items:center; justify-content:center; min-height:52px; min-width:240px; padding:14px 28px; border-radius:15px; background:var(--action-bg); color:var(--action-text); text-decoration:none; font-size:16px; font-weight:600; transition:opacity 150ms; }
+.landing-cta { display:flex; align-items:center; justify-content:center; min-height:52px; min-width:0; padding:14px 28px; border-radius:15px; background:var(--action-bg); color:var(--action-text); text-decoration:none; font-size:16px; font-weight:600; transition:opacity 150ms; }
 .landing-cta:hover { opacity:.88; }
 .landing-meta { font-size:12px; margin:16px 0 0; color:var(--text-secondary); }
 .landing-details { max-width:490px; margin:20px 0 0; color:var(--text-secondary); font-size:11px; line-height:1.6; }
@@ -32,7 +32,7 @@ body.marketing-page { position:relative; isolation:isolate; }
 .landing-header theme-toggle button:hover { background:var(--field-hover); }
 .landing-header theme-toggle svg { width:20px; height:20px; }
 
-.landing-actions {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;}
+.landing-actions {width:min(240px,100%);display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:12px;}
 .landing-selfhost {display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:14px 22px;border-radius:15px;background:var(--field-bg);border:1px solid var(--field-border);color:var(--text-secondary);font-size:15px;font-weight:600;text-decoration:none;transition:color 150ms,background 150ms,border-color 150ms;}
 .landing-selfhost:hover {color:var(--text-primary);background:var(--field-hover);border-color:var(--text-muted);}
 .landing-selfhost svg {flex:none;width:16px;height:16px;}

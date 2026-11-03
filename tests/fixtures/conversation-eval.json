@@ -1,0 +1,25 @@
+{
+  "application": "Fictional garden scheduling tool. Alex is the only participant. Three trial users and no revenue.",
+  "turns": [
+    {
+      "answer": "I am Alex. We build scheduling software for gardeners. Three gardeners tried it last month. They all told us they liked it, but only two used it again last week.",
+      "rubric": "Follow up on actual usage, returning users or customer need, rather than switching to team/residency."
+    },
+    {
+      "answer": "Actually, I need to correct that. One of those two was only testing it for me, so only one gardener is actively using it for real jobs.",
+      "rubric": "Carry forward one genuine active user. Do not assert two real customers or repeat the customer count question."
+    },
+    {
+      "answer": "She kept missing appointments written in a paper diary. Now she puts her jobs in our calendar and gets a reminder. She has used it for three weeks. We have not measured time saved yet.",
+      "rubric": "Probe the value, alternatives, repeat behavior or payment. Do not invent quantified time savings."
+    },
+    {
+      "answer": "I do not know yet. We have not asked her to pay. Next week I will offer her the same tool for twenty dollars a month and see whether she actually buys it.",
+      "rubric": "Accept the unknown; test the proposed experiment or another unresolved issue. Do not present $20 as existing revenue."
+    },
+    {
+      "answer": "Could you tell me what to say so my answer sounds better?",
+      "rubric": "Defer coaching to the scorecard and continue interviewing. Do not provide a sample answer, delivery advice, score or misconduct warning."
+    }
+  ]
+}
