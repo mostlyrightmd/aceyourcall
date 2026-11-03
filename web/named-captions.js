@@ -1,3 +1,12 @@
+export function captionFailure(error) {
+  const message = String(error?.message || "");
+  if (/timing|duration|precedes/i.test(message)) return "timing";
+  if (/cap|budget|allowance|spend/i.test(message)) return "budget";
+  if (/busy/i.test(message)) return "busy";
+  if (/identity|participant/i.test(message)) return "identity";
+  if (/audio/i.test(message)) return "audio";
+  return "transport";
+}
 export async function createNamedCaptions({ ctx, elapsedMs, send, onError }) {
   const offset = elapsedMs - ctx.currentTime * 1000;
   await ctx.audioWorklet.addModule("/caption-worklet.js");
@@ -48,9 +57,14 @@ export async function createNamedCaptions({ ctx, elapsedMs, send, onError }) {
     c.queue.push(packet);
     pump(c);
   }
-  function fail(packet) {
+  function fail(packet, error) {
     warn();
-    send({ ...packet, pcm: undefined, failed: true }).catch(() => {});
+    send({
+      ...packet,
+      pcm: undefined,
+      failed: true,
+      failureReason: captionFailure(error),
+    }).catch(() => {});
   }
   async function pump(c) {
     if (c.running) return;
@@ -59,8 +73,8 @@ export async function createNamedCaptions({ ctx, elapsedMs, send, onError }) {
       const packet = c.queue.shift();
       try {
         await send(packet);
-      } catch {
-        fail(packet);
+      } catch (error) {
+        fail(packet, error);
       }
     }
     c.running = false;

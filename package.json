@@ -12,7 +12,7 @@
     "start:calls": "node src/call-server.js",
     "dev": "vite --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
-    "test:browser": "node tests/room-links.browser.mjs && node tests/react-flow.browser.mjs && node tests/engine-lifecycle.browser.mjs",
+    "test:browser": "node tests/room-links.browser.mjs && node tests/react-flow.browser.mjs && node tests/engine-lifecycle.browser.mjs && node tests/named-captions.browser.mjs && node tests/room-access.browser.mjs",
     "ui:review": "node scripts/ui-review.mjs"
   },
   "engines": {

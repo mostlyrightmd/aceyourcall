@@ -1,3 +1,45 @@
+// Authenticated microphone identities + live activity are independent of text
+// transcription. Use a single unambiguous source only; never guess through overlap.
+export function microphoneAt(record, turn) {
+  const frames = record.speakerFrames || [];
+  const offset = Math.max(
+    0,
+    (record.started || record.created || 0) - (record.created || 0),
+  );
+  turn = {
+    ...turn,
+    start_ms: turn.start_ms + offset,
+    end_ms: turn.end_ms + offset,
+  };
+  const prior = frames.filter((f) => f.at <= turn.start_ms).at(-1);
+  const during = frames.filter(
+    (f) => f.at > turn.start_ms && f.at <= turn.end_ms,
+  );
+  const evidence = [...(prior ? [prior] : []), ...during];
+  if (
+    !prior ||
+    turn.start_ms - prior.at > 3000 ||
+    !evidence.length ||
+    turn.end_ms - evidence.at(-1).at > 3000
+  )
+    return null;
+  let identity;
+  for (const f of evidence) {
+    // Sampled speaking activity cannot identify brief handoffs between founders.
+    // Multi-founder text waits for the per-microphone caption; solo fallback is safe.
+    const ps = f.people.length === 1 ? f.people : [];
+    if (ps.length !== 1 || (identity && identity.id !== ps[0].id)) return null;
+    identity = ps[0];
+  }
+  return identity
+    ? { speakerId: identity.id, speakerName: identity.name }
+    : null;
+}
+export function speakerFrame(record, people, at) {
+  record.speakerFrames ||= [];
+  record.speakerFrames.push({ at, people });
+  if (record.speakerFrames.length > 400) record.speakerFrames.shift();
+}
 export function attributedTranscript(record) {
   const named = record.namedTranscript || [];
   if (!record.namedTranscription) return record.transcript;
@@ -22,7 +64,12 @@ export function attributedTranscript(record) {
     )
     .map((t) =>
       t.speaker === "founders"
-        ? { ...t, speakerName: "Unattributed microphone" }
+        ? {
+            ...t,
+            ...(microphoneAt(record, t) || {
+              speakerName: "Unattributed microphone",
+            }),
+          }
         : t,
     );
   return [...mixed, ...named].sort(

@@ -53,6 +53,30 @@ export function wav(pcm) {
   header.writeUInt32LE(pcm.length, 40);
   return Buffer.concat([header, pcm]);
 }
+// Browser PCM uses one immutable creation-time origin. Provider transcript
+// timestamps use the later session-start origin; convert before validation/storage.
+export function sessionCaption(input, record) {
+  if (input.timebase !== "created") return input;
+  const offset = Math.max(
+    0,
+    (record.started || record.created) - record.created,
+  );
+  const start = input.start_ms - offset,
+    end = input.end_ms - offset;
+  if (end <= 0) return { ...input, start_ms: 0, end_ms: 0, beforeStart: true };
+  if (start < 0 && typeof input.pcm === "string") {
+    const pcm = Buffer.from(input.pcm, "base64");
+    const skip = Math.min(pcm.length, Math.round(-start * 16) * 2);
+    return {
+      ...input,
+      pcm: pcm.subarray(skip).toString("base64"),
+      start_ms: 0,
+      end_ms: end,
+    };
+  }
+  return { ...input, start_ms: Math.max(0, start), end_ms: end };
+}
+
 export async function transcribeMicrophone(pcm) {
   const form = new FormData();
   form.set("model", "gpt-transcribe");

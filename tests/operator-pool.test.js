@@ -55,7 +55,7 @@ test("twenty slots remain distinct under concurrent admission; FIFO queue surviv
     pool = operatorPool(db, "", request);
     assert.equal((await pool.admission("room-24")).position, 5);
     states[0].active = null;
-    await new Promise(r => setTimeout(r, 1050)); // External worker changes refresh within the 1s poll cache.
+    await new Promise((r) => setTimeout(r, 1050)); // External worker changes refresh within the 1s poll cache.
     assert.equal((await pool.admission("room-24")).status, "queued");
     assert.equal((await pool.admission("room-20")).status, "ready");
     await pool.admission("room-21", "cancel");
@@ -64,8 +64,12 @@ test("twenty slots remain distinct under concurrent admission; FIFO queue surviv
       s.availableBudget = 0;
       s.active = null;
     });
-    await assert.rejects(pool.admission("room-20", "claim"), /capacity changed/, "claim rejects stale funded snapshot");
-    await new Promise(r => setTimeout(r, 1050));
+    await assert.rejects(
+      pool.admission("room-20", "claim"),
+      /capacity changed/,
+      "claim rejects stale funded snapshot",
+    );
+    await new Promise((r) => setTimeout(r, 1050));
     assert.equal((await pool.admission("room-25")).status, "unavailable");
     assert.equal((await pool.state()).enabled, false);
   } finally {
@@ -234,26 +238,163 @@ test("room quota groups are atomic and expose bounded retry timing", () => {
 });
 
 test("an in-flight pre-mutation summary cannot reserve a now-busy worker", async () => {
-  const db = new DatabaseSync(':memory:');
-  let active, unblock, first = true;
-  const pending = new Promise(resolve => { unblock = resolve; });
-  let began;
-  const begun = new Promise(resolve => { began = resolve; });
-  const pool = operatorPool(db, 'http://localhost:4500', async (_url, options) => {
-    if (options.method === 'POST') {
-      active = 'running';
-      return { ok: true, json: async () => ({}) };
-    }
-    const captured = { enabled: true, kill: false, active, sessions: [] };
-    if (first) { first = false; began(); await pending; }
-    return { ok: true, json: async () => captured };
+  const db = new DatabaseSync(":memory:");
+  let active,
+    unblock,
+    first = true;
+  const pending = new Promise((resolve) => {
+    unblock = resolve;
   });
+  let began;
+  const begun = new Promise((resolve) => {
+    began = resolve;
+  });
+  const pool = operatorPool(
+    db,
+    "http://localhost:4500",
+    async (_url, options) => {
+      if (options.method === "POST") {
+        active = "running";
+        return { ok: true, json: async () => ({}) };
+      }
+      const captured = { enabled: true, kill: false, active, sessions: [] };
+      if (first) {
+        first = false;
+        began();
+        await pending;
+      }
+      return { ok: true, json: async () => captured };
+    },
+  );
   try {
-    const admission = pool.admission('waiting-room');
+    const admission = pool.admission("waiting-room");
     await begun;
-    await pool.call('/api/sessions', {});
+    await pool.call("/api/sessions", {});
     unblock();
-    assert.equal((await admission).status, 'queued');
-    assert.equal((await pool.admission('waiting-room')).status, 'queued');
-  } finally { unblock(); db.close(); }
+    assert.equal((await admission).status, "queued");
+    assert.equal((await pool.admission("waiting-room")).status, "queued");
+  } finally {
+    unblock();
+    db.close();
+  }
+});
+
+test("preparation spreads across funded workers and retains cache affinity without another paid job", async () => {
+  const { createHash } = await import("node:crypto");
+  const dir = mkdtempSync(join(tmpdir(), "mp-preparation-pool-")),
+    db = new DatabaseSync(":memory:");
+  const workers = [
+    { id: "default", origin: "http://localhost:4600" },
+    { id: "worker-1", origin: "http://localhost:4601" },
+  ];
+  const file = join(dir, "pool.json");
+  writeFileSync(file, JSON.stringify(workers));
+  const old = process.env.MP_OPERATOR_POOL_PATH;
+  process.env.MP_OPERATOR_POOL_PATH = file;
+  const states = workers.map(() => ({
+      enabled: true,
+      kill: false,
+      availableBudget: 2,
+      sessions: [],
+      profiles: [],
+    })),
+    jobs = new Map();
+  let creates = 0;
+  try {
+    const pool = operatorPool(db, "", async (url, init) => {
+      const u = new URL(url),
+        i = Number(u.port) - 4600;
+      let result;
+      if (u.pathname === "/api/state") result = states[i];
+      else if (init.body) {
+        creates++;
+        const b = JSON.parse(init.body),
+          id = createHash("sha256")
+            .update(
+              JSON.stringify([
+                1,
+                b.roomId,
+                b.context.application,
+                b.context.facts,
+              ]),
+            )
+            .digest("hex");
+        result = { id, status: "ready" };
+        jobs.set(i + id, result);
+        states[i].backgroundProcessing = true;
+      } else result = jobs.get(i + u.pathname.split("/").at(-1));
+      return { ok: true, json: async () => result };
+    });
+    const context = {
+      application: "Synthetic company application for a garden tool.",
+      facts: {},
+    };
+    const [a, b] = await Promise.all([
+      pool.prepare({ id: "a" }, context),
+      pool.prepare({ id: "b" }, context),
+    ]);
+    assert.notEqual(a.worker, b.worker);
+    assert.equal(creates, 2);
+    states.forEach((s) => (s.availableBudget = 0));
+    const again = await pool.prepare({ id: "a", preparation: a }, context);
+    assert.equal(again.worker, a.worker);
+    assert.equal(creates, 2);
+  } finally {
+    if (old === undefined) delete process.env.MP_OPERATOR_POOL_PATH;
+    else process.env.MP_OPERATOR_POOL_PATH = old;
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a claim cannot reuse a released lease with a pre-start capacity snapshot", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "mp-claim-race-")),
+    db = new DatabaseSync(":memory:"),
+    file = join(dir, "pool.json");
+  writeFileSync(
+    file,
+    JSON.stringify([
+      { id: "default", origin: "http://localhost:4700" },
+      { id: "other", origin: "http://localhost:4701" },
+    ]),
+  );
+  const old = process.env.MP_OPERATOR_POOL_PATH;
+  process.env.MP_OPERATOR_POOL_PATH = file;
+  let block = false,
+    release,
+    entered;
+  const blocked = new Promise((r) => (entered = r));
+  const states = [
+    { enabled: true, availableBudget: 10, sessions: [] },
+    { enabled: true, availableBudget: 10, sessions: [] },
+  ];
+  try {
+    const pool = operatorPool(db, "", async (url) => {
+      const i = Number(new URL(url).port) - 4700,
+        value = structuredClone(states[i]);
+      if (block && i === 0) {
+        block = false;
+        entered();
+        await new Promise((r) => (release = r));
+      }
+      return { ok: true, json: async () => value };
+    });
+    await pool.admission("a");
+    await pool.admission("b");
+    await pool.admission("c");
+    assert.equal((await pool.admission("a", "claim")).worker, "default");
+    block = true;
+    const claiming = pool.admission("b", "claim");
+    await blocked;
+    states[0].active = "running";
+    pool.release("a");
+    release();
+    assert.equal((await claiming).worker, "other");
+    assert.equal((await pool.admission("c")).status, "queued");
+  } finally {
+    if (old === undefined) delete process.env.MP_OPERATOR_POOL_PATH;
+    else process.env.MP_OPERATOR_POOL_PATH = old;
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

@@ -46,6 +46,24 @@ const store = openStore("private/rooms.sqlite", {
 });
 setInterval(() => store.prune(), 60000).unref();
 const links = roomLinks(store.db, master, origin);
+// Extend still-valid legacy rooms once; never revive expired capabilities.
+for (const row of store.db.prepare("SELECT key,value FROM settings").all()) {
+  const room = JSON.parse(row.value);
+  if (
+    room?.id === row.key &&
+    room.expires > Date.now() &&
+    !room.preparationVersion
+  ) {
+    room.created = room.expires - 86400000;
+    room.expires += 6 * 86400000;
+    room.preparationVersion = 1;
+    store.set(row.key, room);
+    store.db
+      .prepare("UPDATE room_links SET expires=? WHERE room_id=?")
+      .run(room.expires, room.id);
+  }
+}
+
 store.db.exec(
   "CREATE TABLE IF NOT EXISTS privacy_consents (id TEXT PRIMARY KEY, room_id TEXT, created INTEGER, data TEXT)",
 );
@@ -57,17 +75,54 @@ function saveConsent(roomId, identity, choices) {
     .prepare("INSERT INTO privacy_consents VALUES(?,?,?,?)")
     .run(identity, roomId, choices.at, JSON.stringify(choices));
 }
+function authenticatedParticipants(room, entries) {
+  if (!Array.isArray(entries)) return [];
+  const seen = new Set();
+  return entries.slice(0, 3).flatMap((entry) => {
+    const id = typeof entry === "string" ? entry : entry?.id;
+    if (seen.has(id)) return [];
+    seen.add(id);
+    const row = store.db
+      .prepare("SELECT name FROM room_participants WHERE id=? AND room_id=?")
+      .get(String(id || ""), room.id);
+    return row
+      ? [{ id, name: row.name, speaking: entry?.speaking === true }]
+      : [];
+  });
+}
 function saveRoom(room) {
   const research = room.research;
   // Keep the public profile in its TTL-governed cache only, not in room copies.
   store.set(room.id, {
     ...room,
+    interviewerSettings: room.context?.interviewer || room.interviewerSettings,
+    preparation: room.preparation
+      ? {
+          id: room.preparation.id,
+          worker: room.preparation.worker,
+          status: room.preparation.status,
+          error: room.preparation.error,
+        }
+      : undefined,
     research: research
       ? { id: research.id, status: research.status, error: research.error }
       : undefined,
   });
 }
 async function queueResearch(room) {
+  if (room.context?.application) {
+    try {
+      room.preparation = await pool.prepare(room, room.context);
+      if (!/^[a-f0-9]{64}$/.test(room.preparation?.id || ""))
+        throw Error("Invalid preparation response");
+    } catch {
+      room.preparation = {
+        status: "failed",
+        error:
+          "Business preparation unavailable. Save the application to retry.",
+      };
+    }
+  }
   const person = room.context?.interviewer;
   if (!person?.name && !person?.linkedin) {
     delete room.research;
@@ -88,6 +143,29 @@ async function queueResearch(room) {
   }
 }
 async function refreshResearch(room) {
+  if (room.preparation?.id) {
+    try {
+      const worker = room.preparation.worker;
+      const next = await backend(
+        "/api/business-preparation/" + room.preparation.id,
+        undefined,
+        worker,
+      );
+      room.preparation = next
+        ? { ...next, worker }
+        : {
+            status: "failed",
+            error: "Preparation expired. Save the application to refresh.",
+          };
+    } catch {
+      room.preparation = {
+        ...room.preparation,
+        status: "failed",
+        error: "Business preparation temporarily unavailable.",
+      };
+    }
+    saveRoom(room);
+  }
   if (!room.research?.id) return;
   try {
     const next = await backend("/api/interviewer-research/" + room.research.id);
@@ -140,7 +218,11 @@ const pool = operatorPool(store.db, operatorOrigin);
 const getPublicStats = publicStats(pool);
 const admission = publicAdmission(store.db, origin, master);
 const rtcService = new RoomServiceClient(
-  (process.env.LIVEKIT_INTERNAL_URL || process.env.LIVEKIT_URL || "http://localhost:7880").replace(/^ws/, "http"),
+  (
+    process.env.LIVEKIT_INTERNAL_URL ||
+    process.env.LIVEKIT_URL ||
+    "http://localhost:7880"
+  ).replace(/^ws/, "http"),
   key,
   secret,
 );
@@ -190,9 +272,12 @@ const server = http.createServer(async (req, res) => {
     "Content-Security-Policy",
     `default-src 'self'; connect-src 'self' https://challenges.cloudflare.com ${process.env.LIVEKIT_URL || "ws://localhost:7880"}; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; style-src 'self' 'nonce-${styleNonce}'; media-src 'self' blob:; worker-src blob:; frame-ancestors 'none'; base-uri 'none'`,
   );
-  const incomingOrigin = requestOrigin(req, origin, process.env.MP_CALL_ALIAS_ORIGINS);
-  if (!incomingOrigin)
-    return json(res, 403, { error: "Invalid host" });
+  const incomingOrigin = requestOrigin(
+    req,
+    origin,
+    process.env.MP_CALL_ALIAS_ORIGINS,
+  );
+  if (!incomingOrigin) return json(res, 403, { error: "Invalid host" });
   if (
     (req.headers.origin && req.headers.origin !== incomingOrigin) ||
     (req.method !== "GET" &&
@@ -202,17 +287,29 @@ const server = http.createServer(async (req, res) => {
     return json(res, 403, { error: "Invalid origin" });
   try {
     const path = new URL(req.url, origin).pathname;
-    if (path === '/practice' && req.method === 'GET') {
-      res.writeHead(308, {Location:'/new' + new URL(req.url, origin).search}); return res.end();
+    if (path === "/practice" && req.method === "GET") {
+      res.writeHead(308, {
+        Location: "/new" + new URL(req.url, origin).search,
+      });
+      return res.end();
     }
-    if (path === '/analytics' && req.method === 'POST') {
-      admission.limit('analytics:global', 600, 60000);
-      let raw = '';
-      for await (const chunk of req) { raw += chunk; if (Buffer.byteLength(raw) > 512) return json(res, 413, {error:'Too large'}); }
-      const input = JSON.parse(raw || '{}');
-      if (!browserEvents.has(input.event) || !/^[a-f0-9-]{36}$/.test(input.id || '')) return json(res,400,{error:'Invalid event'});
-      if (req.headers.dnt !== '1' && req.headers['sec-gpc'] !== '1') capture(input.event, input.id);
-      return json(res,202,{ok:true});
+    if (path === "/analytics" && req.method === "POST") {
+      admission.limit("analytics:global", 600, 60000);
+      let raw = "";
+      for await (const chunk of req) {
+        raw += chunk;
+        if (Buffer.byteLength(raw) > 512)
+          return json(res, 413, { error: "Too large" });
+      }
+      const input = JSON.parse(raw || "{}");
+      if (
+        !browserEvents.has(input.event) ||
+        !/^[a-f0-9-]{36}$/.test(input.id || "")
+      )
+        return json(res, 400, { error: "Invalid event" });
+      if (req.headers.dnt !== "1" && req.headers["sec-gpc"] !== "1")
+        capture(input.event, input.id);
+      return json(res, 202, { ok: true });
     }
     if (path === "/rtc-events" && req.method === "POST") {
       let raw = "";
@@ -239,7 +336,19 @@ const server = http.createServer(async (req, res) => {
     if (
       (req.method === "GET" &&
         [
-          "/", "/new", "/favicon.svg", "/favicon-16.png", "/favicon-32.png", "/favicon-180.png", "/aceyourcall-logo.svg", "/landing.css", "/landing.js", "/analytics.js", "/og-lighthouse.png", "/og-light-minimal.png", "/x-light-minimal.png",
+          "/",
+          "/new",
+          "/favicon.svg",
+          "/favicon-16.png",
+          "/favicon-32.png",
+          "/favicon-180.png",
+          "/aceyourcall-logo.svg",
+          "/landing.css",
+          "/landing.js",
+          "/analytics.js",
+          "/og-lighthouse.png",
+          "/og-light-minimal.png",
+          "/x-light-minimal.png",
           "/call.css",
           "/entry.css",
           "/entry-coast.webp",
@@ -257,11 +366,13 @@ const server = http.createServer(async (req, res) => {
         /^\/app\/assets\/[a-zA-Z0-9_-]+\.(js|css)$/.test(path))
     ) {
       const file =
-        path === "/" ? "landing.html" : path === "/new" || path.startsWith("/r/")
-          ? "app/index.html"
-          : ["/terms", "/privacy"].includes(path)
-            ? path.slice(1) + ".html"
-            : path.slice(1);
+        path === "/"
+          ? "landing.html"
+          : path === "/new" || path.startsWith("/r/")
+            ? "app/index.html"
+            : ["/terms", "/privacy"].includes(path)
+              ? path.slice(1) + ".html"
+              : path.slice(1);
       res.setHeader(
         "Content-Type",
         file.endsWith(".webp")
@@ -269,27 +380,35 @@ const server = http.createServer(async (req, res) => {
           : file.endsWith(".svg")
             ? "image/svg+xml"
             : file.endsWith(".png")
-            ? "image/png"
-            : file.endsWith(".js")
-              ? "text/javascript"
-              : file.endsWith(".css")
-                ? "text/css"
-                : "text/html",
+              ? "image/png"
+              : file.endsWith(".js")
+                ? "text/javascript"
+                : file.endsWith(".css")
+                  ? "text/css"
+                  : "text/html",
       );
-      if (path === "/new" || path.startsWith("/r/")) res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      if (path === "/new" || path.startsWith("/r/"))
+        res.setHeader("X-Robots-Tag", "noindex, nofollow");
       return sendStatic(req, res, file, styleNonce, origin);
     }
     if (path === "/stats" && req.method === "GET") {
-      try { return json(res, 200, await getPublicStats()); }
-      catch { return json(res, 503, { error: "Count unavailable" }); }
+      try {
+        return json(res, 200, await getPublicStats());
+      } catch {
+        return json(res, 503, { error: "Count unavailable" });
+      }
     }
     if (path === "/robots.txt" && req.method === "GET") {
       res.setHeader("Content-Type", "text/plain");
-      return res.end(`User-agent: *\nAllow: /\nDisallow: /r/\nDisallow: /rooms/\nDisallow: /api/\nSitemap: ${origin}/sitemap.xml\n`);
+      return res.end(
+        `User-agent: *\nAllow: /\nDisallow: /r/\nDisallow: /rooms/\nDisallow: /api/\nSitemap: ${origin}/sitemap.xml\n`,
+      );
     }
     if (path === "/sitemap.xml" && req.method === "GET") {
       res.setHeader("Content-Type", "application/xml");
-      return res.end(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${origin}/</loc></url></urlset>`);
+      return res.end(
+        `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${origin}/</loc></url></urlset>`,
+      );
     }
     if (path === "/config" && req.method === "GET")
       return json(res, 200, {
@@ -379,12 +498,14 @@ const server = http.createServer(async (req, res) => {
       const id = randomUUID(),
         room = {
           id,
+          created: Date.now(),
+          preparationVersion: 1,
           publicRoom: !!publicIdentity,
           publicIdentity,
           attempts: 0,
           host: random(),
           guest: random(),
-          expires: Date.now() + 86400000,
+          expires: Date.now() + 7 * 86400000,
           sessions: [],
           context: context || {
             application: initial.application,
@@ -435,10 +556,19 @@ const server = http.createServer(async (req, res) => {
     if (action === "join" && req.method === "POST") {
       if (b.consent !== true) throw Error("Consent is required to join");
       if (room.publicRoom) {
-        if (room.mediaDeadline && room.mediaDeadline < Date.now())
-          throw Error(
-            "This room’s practice window has ended. Create a new room.",
-          );
+        if (room.mediaDeadline && room.mediaDeadline < Date.now()) {
+          if (
+            Date.now() -
+              (room.practiceDayStarted || room.mediaDeadline - 25 * 60000) <
+            86400000
+          )
+            throw Error(
+              "Today’s practice window has ended. Return tomorrow or create a new room.",
+            );
+          room.mediaDeadline = null;
+          room.mediaClosed = false;
+          room.attempts = 0;
+        }
         admission.limit("join:" + room.id, 30, 3600000);
         if (!room.mediaDeadline) {
           const activeRooms = store.db
@@ -452,6 +582,7 @@ const server = http.createServer(async (req, res) => {
               "Free rooms are full. Please try joining again shortly.",
             );
           room.mediaDeadline = Date.now() + 25 * 60000;
+          room.practiceDayStarted = Date.now();
           saveRoom(room);
         }
       }
@@ -510,9 +641,12 @@ const server = http.createServer(async (req, res) => {
     if (action === "presence" && req.method === "GET") {
       try {
         const rooms = await rtcService.listRooms([room.id]);
-        const participants = rooms.length ? await rtcService.listParticipants(room.id) : [];
+        const participants = rooms.length
+          ? await rtcService.listParticipants(room.id)
+          : [];
         return json(res, 200, {
-          count: participants.filter((p) => p.identity !== "interviewer").length,
+          count: participants.filter((p) => p.identity !== "interviewer")
+            .length,
           code: links.code(room),
         });
       } catch {
@@ -520,11 +654,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
     if (action === "state" && req.method === "GET") {
-      if (
-        host &&
-        !room.research &&
-        (room.context?.interviewer?.name || room.context?.interviewer?.linkedin)
-      ) {
+      if (host && !room.preparation && room.context?.application) {
         await queueResearch(room);
         saveRoom(room);
       }
@@ -536,14 +666,22 @@ const server = http.createServer(async (req, res) => {
         profiles: state.profiles.map((p) => {
           const { id, title, interviewer } = roomProfile(
             p,
-            room.legacyPreset || !room.context
+            room.legacyPreset
               ? null
-              : { ...room.context, research: room.research?.result },
+              : {
+                  ...room.context,
+                  interviewer:
+                    room.context?.interviewer || room.interviewerSettings,
+                  research: room.research?.result,
+                },
           );
           return { id, title, interviewer };
         }),
         enabled: state.enabled && !state.kill,
         busy: state.busy,
+        preparation: room.preparation
+          ? { status: room.preparation.status, error: room.preparation.error }
+          : undefined,
         research: room.research
           ? {
               status: room.research.status,
@@ -560,7 +698,9 @@ const server = http.createServer(async (req, res) => {
             ? YAML.stringify(room.context.facts)
             : "{}"
           : undefined,
-        interviewer: host ? room.context?.interviewer : undefined,
+        interviewer: host
+          ? room.context?.interviewer || room.interviewerSettings
+          : undefined,
       });
     }
     if (action === "withdraw-permissions" && req.method === "POST") {
@@ -606,10 +746,20 @@ const server = http.createServer(async (req, res) => {
     }
     if (action === "start" && req.method === "POST") {
       await refreshResearch(room);
+      if (["queued", "searching"].includes(room.preparation?.status))
+        throw Error("Business preparation is still in progress.");
       if (["queued", "searching"].includes(room.research?.status))
         throw Error("Interviewer research is still in progress.");
       if (room.starting || editing.has(room.id))
         throw Error("Wait for the current room update to finish.");
+      const prepared =
+        room.preparation?.status === "ready" ? room.preparation.result : null;
+      if (!room.context?.application && prepared)
+        room.context = {
+          application: prepared.brief,
+          facts: {},
+          interviewer: room.interviewerSettings || {},
+        };
       if (!room.context?.application)
         throw Error(
           "Application expired from memory. Open Company context and paste or upload it again.",
@@ -647,7 +797,9 @@ const server = http.createServer(async (req, res) => {
             sdp: b.sdp,
             roomId: room.id,
             namedTranscription: b.namedTranscription === true,
+            participants: authenticatedParticipants(room, b.participantIds),
             interviewerResearch: room.research?.result,
+            preparation: prepared,
             context: room.context || roomContext(await backend("/api/state")),
             legacyPreset: room.legacyPreset || !room.context,
           },
@@ -685,6 +837,8 @@ const server = http.createServer(async (req, res) => {
           await backend(
             "/api/sessions/" + session[1] + "/caption",
             {
+              timebase: b.timebase,
+              failureReason: b.failureReason,
               chunkId: b.chunkId,
               speakerId: b.speakerId,
               speakerName: participant.name,
@@ -707,9 +861,13 @@ const server = http.createServer(async (req, res) => {
                 started: b.started === true,
                 humanSpeaking: b.humanSpeaking === true,
                 partnerSpeaking: b.partnerSpeaking === true,
-                participants: b.participants,
+                participants: Array.isArray(b.participants)
+                  ? authenticatedParticipants(room, b.participants)
+                  : undefined,
               }
-            : session[2] === "end" ? { reason: b.reason } : {},
+            : session[2] === "end"
+              ? { reason: b.reason }
+              : {},
           room.sessionWorkers?.[session[1]] || "default",
         ),
       );
@@ -722,6 +880,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 server.requestTimeout = 60000;
-server.listen(Number(process.env.CALL_PORT || 4320), process.env.MP_CALL_BIND || "127.0.0.1", () =>
-  console.log("Private call gateway listening"),
+server.listen(
+  Number(process.env.CALL_PORT || 4320),
+  process.env.MP_CALL_BIND || "127.0.0.1",
+  () => console.log("Private call gateway listening"),
 );

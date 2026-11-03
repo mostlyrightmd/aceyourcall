@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 export function operatorPool(db, fallback, request = fetch) {
   const workers = process.env.MP_OPERATOR_POOL_PATH
@@ -41,7 +42,8 @@ export function operatorPool(db, fallback, request = fetch) {
       signal: AbortSignal.timeout(
         path.endsWith("/scorecard")
           ? 110000
-          : path.startsWith("/api/state")
+          : path.startsWith("/api/state") ||
+              path.startsWith("/api/business-preparation")
             ? 4000
             : 45000,
       ),
@@ -79,7 +81,10 @@ export function operatorPool(db, fallback, request = fetch) {
     !(s.cooldownUntil > Date.now());
   const funded = (s) =>
     s.availableBudget === undefined || s.availableBudget >= 1.7;
-  let cached, cacheAt = 0, generation = 0, fetching;
+  let cached,
+    cacheAt = 0,
+    generation = 0,
+    fetching;
   function invalidate() {
     generation++;
     cached = undefined;
@@ -90,15 +95,17 @@ export function operatorPool(db, fallback, request = fetch) {
     const version = generation;
     if (!fetching || fetching.version !== version) {
       const flight = { version };
-      flight.promise = snapshot().then((s) => {
-        if (generation === version) {
-          cached = s;
-          cacheAt = Date.now();
-        }
-        return s;
-      }).finally(() => {
-        if (fetching === flight) fetching = undefined;
-      });
+      flight.promise = snapshot()
+        .then((s) => {
+          if (generation === version) {
+            cached = s;
+            cacheAt = Date.now();
+          }
+          return s;
+        })
+        .finally(() => {
+          if (fetching === flight) fetching = undefined;
+        });
       fetching = flight;
     }
     const result = await fetching.promise;
@@ -168,7 +175,16 @@ export function operatorPool(db, fallback, request = fetch) {
         room,
       );
       // Polls share a bounded snapshot; claims always revalidate live capacity.
-      const states = action === "claim" ? await snapshot() : await summary();
+      let states;
+      if (action === "claim") {
+        // A previous start may complete and release its lease while this probe is
+        // in flight. Never combine that old capacity with the new lease table.
+        let version;
+        do {
+          version = generation;
+          states = await snapshot();
+        } while (version !== generation);
+      } else states = await summary();
       const occupied = new Set(
         db
           .prepare(
@@ -220,8 +236,49 @@ export function operatorPool(db, fallback, request = fetch) {
           .get(row.joined, row.joined, room).n,
       };
     });
+  const prepare = (room, context) =>
+    locked(async () => {
+      const id = createHash("sha256")
+        .update(
+          JSON.stringify([1, room.id, context.application, context.facts]),
+        )
+        .digest("hex");
+      if (room.preparation?.id === id) {
+        const worker = room.preparation.worker || workers[0].id;
+        const old = await call(
+          "/api/business-preparation/" + id,
+          undefined,
+          worker,
+        );
+        if (old && old.status !== "failed") return { ...old, worker };
+      }
+      const states = await summary();
+      const eligible = states
+        .filter(
+          (s) =>
+            s.enabled &&
+            !s.kill &&
+            !s.processing &&
+            (s.availableBudget ?? 1) >= 0.2,
+        )
+        .sort(
+          (a, b) =>
+            Number(!!a.backgroundProcessing) -
+              Number(!!b.backgroundProcessing) ||
+            (b.availableBudget ?? 1) - (a.availableBudget ?? 1),
+        );
+      if (!eligible.length) throw Error("Research allowance unavailable");
+      const worker = eligible[0].worker;
+      const job = await call(
+        "/api/business-preparation",
+        { roomId: room.id, context },
+        worker,
+      );
+      return { ...job, worker };
+    });
   return {
     workers,
+    prepare,
     call,
     state,
     admission,

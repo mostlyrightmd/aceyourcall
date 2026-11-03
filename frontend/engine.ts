@@ -123,14 +123,26 @@ export function createEngine(grant: Grant) {
   let stopping = false;
   const failures = new Map<string, ReturnType<typeof setTimeout>>();
   function mediaFailure(reason: string, failed: boolean) {
-    if (!failed) { clearTimeout(failures.get(reason)); failures.delete(reason); return; }
-    if (stopping || disposed || failures.has(reason)) return;
-    failures.set(reason, setTimeout(() => {
+    if (!failed) {
+      clearTimeout(failures.get(reason));
       failures.delete(reason);
-      if (stopping || !sessionId || disposed) return;
-      note("Interviewer audio disconnected. Ending the interview and preparing your scorecard.", true);
-      void end(reason).catch(() => note("Interview connection lost. Checking the final result…", true));
-    }, 8000));
+      return;
+    }
+    if (stopping || disposed || failures.has(reason)) return;
+    failures.set(
+      reason,
+      setTimeout(() => {
+        failures.delete(reason);
+        if (stopping || !sessionId || disposed) return;
+        note(
+          "Interviewer audio disconnected. Ending the interview and preparing your scorecard.",
+          true,
+        );
+        void end(reason).catch(() =>
+          note("Interview connection lost. Checking the final result…", true),
+        );
+      }, 8000),
+    );
   }
   async function cleanupAI() {
     if (cleanup) return cleanup;
@@ -249,7 +261,9 @@ export function createEngine(grant: Grant) {
         .on(RoomEvent.LocalTrackUnpublished, (p) => {
           if (p.track) removeTrack(p.track);
         })
-        .on(RoomEvent.AudioPlaybackStatusChanged, () => update({ audioBlocked: !room?.canPlaybackAudio }))
+        .on(RoomEvent.AudioPlaybackStatusChanged, () =>
+          update({ audioBlocked: !room?.canPlaybackAudio }),
+        )
         .on(RoomEvent.ActiveSpeakersChanged, sync)
         .on(RoomEvent.Reconnecting, () => {
           update({ connection: "Reconnecting…" });
@@ -277,9 +291,7 @@ export function createEngine(grant: Grant) {
         await room.disconnect();
         return;
       }
-      await room
-        .startAudio()
-        .catch(() => update({ audioBlocked: true }));
+      await room.startAudio().catch(() => update({ audioBlocked: true }));
       await room.localParticipant.setMicrophoneEnabled(mic);
       try {
         await room.localParticipant.setCameraEnabled(camera);
@@ -338,16 +350,20 @@ export function createEngine(grant: Grant) {
         }
         if (q.status === "ready") break;
         if (q.status === "unavailable") throw Error(q.message);
-        if (!queuedAt) { queuedAt = Date.now(); track("queue_entered"); }
+        if (!queuedAt) {
+          queuedAt = Date.now();
+          track("queue_entered");
+        }
         update({ queue: q.position });
         await new Promise((r) => setTimeout(r, 3000));
       }
       update({ queueWaiting: false });
-      await api("grounding", context);
+      // Context edits are saved explicitly; starting must not overwrite cached preparation.
       if (queueCancelled) return;
       stopping = false;
       ctx = new AudioContext({ sampleRate: 48000 });
-      ctx.onstatechange = () => mediaFailure("audio_context_suspended", ctx?.state === "suspended");
+      ctx.onstatechange = () =>
+        mediaFailure("audio_context_suspended", ctx?.state === "suspended");
       await ctx.resume();
       mix = ctx.createMediaStreamDestination();
       allAudio();
@@ -356,26 +372,44 @@ export function createEngine(grant: Grant) {
         consent: true,
       });
       aiRoom = new Room();
-      aiRoom.on(RoomEvent.Reconnecting, () => mediaFailure("ai_room_disconnected", true))
-        .on(RoomEvent.Reconnected, () => mediaFailure("ai_room_disconnected", false))
-        .on(RoomEvent.Disconnected, () => mediaFailure("ai_room_disconnected", true))
-        .on(RoomEvent.LocalTrackUnpublished, () => mediaFailure("ai_track_ended", true));
+      aiRoom
+        .on(RoomEvent.Reconnecting, () =>
+          mediaFailure("ai_room_disconnected", true),
+        )
+        .on(RoomEvent.Reconnected, () =>
+          mediaFailure("ai_room_disconnected", false),
+        )
+        .on(RoomEvent.Disconnected, () =>
+          mediaFailure("ai_room_disconnected", true),
+        )
+        .on(RoomEvent.LocalTrackUnpublished, () =>
+          mediaFailure("ai_track_ended", true),
+        );
       await aiRoom.connect(token.url, token.token, { autoSubscribe: false });
       pc = new RTCPeerConnection();
       const inputTrack = mix.stream.getAudioTracks()[0];
-      inputTrack.addEventListener("ended", () => mediaFailure("ai_track_ended", true));
+      inputTrack.addEventListener("ended", () =>
+        mediaFailure("ai_track_ended", true),
+      );
       pc.addTrack(inputTrack, mix.stream);
       pc.ontrack = async (e) => {
-        e.track.addEventListener("ended", () => mediaFailure("ai_track_ended", true));
+        e.track.addEventListener("ended", () =>
+          mediaFailure("ai_track_ended", true),
+        );
         decoder = new Audio();
         decoder.muted = true;
         decoder.srcObject = new MediaStream([e.track]);
         await decoder.play().catch(() => {});
         try {
-          const publication = await aiRoom?.localParticipant.publishTrack(e.track, {
-            source: Track.Source.Microphone,
-          });
-          publication?.track?.mediaStreamTrack.addEventListener("ended", () => mediaFailure("ai_track_ended", true));
+          const publication = await aiRoom?.localParticipant.publishTrack(
+            e.track,
+            {
+              source: Track.Source.Microphone,
+            },
+          );
+          publication?.track?.mediaStreamTrack.addEventListener("ended", () =>
+            mediaFailure("ai_track_ended", true),
+          );
         } catch {
           note("AI audio could not connect.", true);
           void end("audio_publish_failed").catch(() => {});
@@ -393,7 +427,10 @@ export function createEngine(grant: Grant) {
         } catch {}
       };
       pc.onconnectionstatechange = () => {
-        mediaFailure("provider_connection_failed", !!pc && ["failed", "disconnected"].includes(pc.connectionState));
+        mediaFailure(
+          "provider_connection_failed",
+          !!pc && ["failed", "disconnected"].includes(pc.connectionState),
+        );
       };
       await pc.setLocalDescription(await pc.createOffer());
       if (pc.iceGatheringState !== "complete")
@@ -426,6 +463,11 @@ export function createEngine(grant: Grant) {
           profile: snapshot.profile,
           sdp: pc.localDescription!.sdp,
           namedTranscription: true,
+          participantIds: room
+            ? [room.localParticipant, ...room.remoteParticipants.values()]
+                .filter((p) => p.identity !== "interviewer")
+                .map((p) => p.identity)
+            : [],
         },
         60000,
       );
@@ -439,11 +481,18 @@ export function createEngine(grant: Grant) {
           ctx,
           elapsedMs: started.elapsedMs || 0,
           send: async (packet: unknown) => {
-            const result = await api(`sessions/${started.id}/caption`, packet);
+            const result = await api(`sessions/${started.id}/caption`, {
+              ...(packet as object),
+              timebase: "created",
+            });
             // Publish attributed words as soon as transcription finishes.
             if (!disposed && !captionRefreshPending) {
               captionRefreshPending = true;
-              void refresh().catch(() => {}).finally(() => { captionRefreshPending = false; });
+              void refresh()
+                .catch(() => {})
+                .finally(() => {
+                  captionRefreshPending = false;
+                });
             }
             return result;
           },
@@ -473,7 +522,11 @@ export function createEngine(grant: Grant) {
             ),
             participants: ps
               .filter((p) => p.identity !== "interviewer")
-              .map((p) => ({ name: p.name, speaking: p.isSpeaking })),
+              .map((p) => ({
+                id: p.identity,
+                name: p.name,
+                speaking: p.isSpeaking,
+              })),
           });
         } catch {
           if (sessionId !== heartbeatSession || stopping) return;
