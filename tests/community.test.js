@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { roomContext, roomProfile } from "../src/room-context.js";
@@ -56,11 +57,29 @@ test("practice actions prioritize low scores and preserve observed evidence with
 });
 test("community preview isolates context and forwards a room snapshot, never global company data", async () => {
   let received;
+  const preparations = new Map();
+  let preparationCalls = 0;
   const backend = createServer(async (req, res) => {
     let raw = "";
     for await (const c of req) raw += c;
     res.setHeader("content-type", "application/json");
-    if (req.url.startsWith("/api/state"))
+    if (req.url === "/api/business-preparation") {
+      preparationCalls++;
+      const input = JSON.parse(raw),
+        id = createHash("sha256").update(raw).digest("hex");
+      const job = {
+        id,
+        status: "ready",
+        result: {
+          brief: "Derived company preparation for room " + input.roomId,
+          questions: [],
+        },
+      };
+      preparations.set(id, job);
+      res.end(JSON.stringify(job));
+    } else if (req.url.startsWith("/api/business-preparation/"))
+      res.end(JSON.stringify(preparations.get(req.url.split("/").at(-1))));
+    else if (req.url.startsWith("/api/state"))
       res.end(
         JSON.stringify({
           profiles: [
@@ -85,20 +104,22 @@ test("community preview isolates context and forwards a room snapshot, never glo
   const dir = mkdtempSync(join(tmpdir(), "mp-community-"));
   symlinkSync(resolve("src"), join(dir, "src"));
   const origin = "http://localhost:14330";
-  const child = spawn(process.execPath, [resolve("src/call-server.js")], {
-    cwd: dir,
-    env: {
-      ...process.env,
-      MP_CALL_ORIGIN: origin,
-      CALL_PORT: "14330",
-      MP_OPERATOR_ORIGIN: "http://127.0.0.1:14331",
-      MP_CALL_ACCESS: "m".repeat(40),
-      LIVEKIT_API_KEY: "test",
-      LIVEKIT_API_SECRET: "s".repeat(40),
-      MP_COMMUNITY_PREVIEW: "1",
-    },
-    stdio: "pipe",
-  });
+  const start = () =>
+    spawn(process.execPath, [resolve("src/call-server.js")], {
+      cwd: dir,
+      env: {
+        ...process.env,
+        MP_CALL_ORIGIN: origin,
+        CALL_PORT: "14330",
+        MP_OPERATOR_ORIGIN: "http://127.0.0.1:14331",
+        MP_CALL_ACCESS: "m".repeat(40),
+        LIVEKIT_API_KEY: "test",
+        LIVEKIT_API_SECRET: "s".repeat(40),
+        MP_COMMUNITY_PREVIEW: "1",
+      },
+      stdio: "pipe",
+    });
+  let child = start();
   const request = (path, key, data) =>
     fetch(origin + path, {
       method: data === undefined ? "GET" : "POST",
@@ -229,15 +250,50 @@ test("community preview isolates context and forwards a room snapshot, never glo
           (c) => c.withdrawn && !c.sales && !c.improvement && c.email === "",
         ),
     );
+    const savedRoom = JSON.parse(
+      db.prepare("SELECT value FROM settings WHERE key=?").get(a.id).value,
+    );
+    assert.ok(savedRoom.expires > Date.now() + 6 * 86400000);
+    assert.equal(savedRoom.context, undefined);
+    assert.equal(savedRoom.preparation.result, undefined);
     db.close();
     assert.equal(
       (await (await request(`/rooms/${b.id}/state`, b.host)).json())
         .application,
       "TEAM BETA private application.",
     );
-  } finally {
+    const callsBeforeRestart = preparationCalls;
     child.kill();
     await new Promise((r) => child.once("exit", r));
+    child = start();
+    await new Promise((r, j) => {
+      child.stdout.once("data", r);
+      child.once("exit", () => j(Error("restart failed")));
+    });
+    const resumed = await (
+      await request(`/rooms/${a.id}/state`, a.host)
+    ).json();
+    assert.equal(resumed.application, "");
+    assert.equal(resumed.preparation.status, "ready");
+    assert.equal(
+      (
+        await request(`/rooms/${a.id}/start`, a.host, {
+          profile: "speedrun-10",
+          sdp: "synthetic",
+        })
+      ).status,
+      201,
+    );
+    assert.equal(
+      received.context.application,
+      "Derived company preparation for room " + a.id,
+    );
+    assert.equal(preparationCalls, callsBeforeRestart);
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill();
+      await new Promise((r) => child.once("exit", r));
+    }
     await new Promise((r) => backend.close(r));
     rmSync(dir, { recursive: true, force: true });
   }

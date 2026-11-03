@@ -32,8 +32,8 @@ body.marketing-page { position:relative; isolation:isolate; }
 .landing-header theme-toggle button:hover { background:var(--field-hover); }
 .landing-header theme-toggle svg { width:20px; height:20px; }
 
-.landing-actions {display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;}
+.landing-actions {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;}
 .landing-selfhost {display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:14px 22px;border-radius:15px;background:var(--field-bg);border:1px solid var(--field-border);color:var(--text-secondary);font-size:15px;font-weight:600;text-decoration:none;transition:color 150ms,background 150ms,border-color 150ms;}
 .landing-selfhost:hover {color:var(--text-primary);background:var(--field-hover);border-color:var(--text-muted);}
-.landing-selfhost svg {flex:none;}
+.landing-selfhost svg {flex:none;width:16px;height:16px;}
 @media(max-width:480px){.landing-actions{width:min(300px,100%);flex-direction:column;gap:10px;}.landing-actions a{width:100%;}}

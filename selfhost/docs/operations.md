@@ -16,7 +16,7 @@ Stop admission before planned maintenance and wait for every LiveKit participant
 
 Preserve `selfhost/generated/` and the `app-data` Docker volume. They contain credentials and private transcripts. Stop services for a simple consistent volume backup; encrypt and restrict access to backups. Do not use `down -v` unless you intend to permanently delete stored sessions. Test restoring a backup on an isolated installation before relying on it.
 
-Application text is memory-only and does not survive a restart. Browser drafts can restore it; users may need to supply it again. Rooms expire after 24 hours, stored interview records after up to 30 days. History is not an unlimited account archive. Backups have their own retention obligation and are not removed by live database cleanup.
+Application text is memory-only and does not survive a restart. Browser drafts can restore it; users may need to supply it again. Derived preparation survives restarts for seven days; raw input must be re-entered to edit it. Rooms expire after seven days, stored interview records after up to 30 days. History is not an unlimited account archive. Backups have their own retention obligation and are not removed by live database cleanup.
 
 ## Scaling
 

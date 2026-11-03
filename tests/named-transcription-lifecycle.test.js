@@ -205,8 +205,10 @@ test("named caption reservations survive voice finalization, duplicate requests 
       400,
     );
   } finally {
-    child.kill();
-    await new Promise((r) => child.once("exit", r));
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill();
+      await new Promise((r) => child.once("exit", r));
+    }
     rmSync(dir, { recursive: true, force: true });
   }
 });

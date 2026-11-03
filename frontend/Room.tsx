@@ -49,13 +49,15 @@ function InterviewerStandby({
         <span>
           {pending
             ? research?.status === "queued"
-              ? "Preparing your interviewer…"
+              ? "Preparing your interview…"
               : "Researching background…"
-            : active
-              ? "Connecting interviewer…"
-              : ended
-                ? "Ready for another interview"
-                : "Ready when you are"}
+            : research?.status === "failed"
+              ? "Research unavailable · using your application"
+              : active
+                ? "Connecting interviewer…"
+                : ended
+                  ? "Ready for another interview"
+                  : "Ready when you are"}
         </span>
         {pending && <progress aria-label="Interviewer research in progress" />}
       </div>
@@ -76,7 +78,10 @@ function Media({ track, local }: { track: Track; local: boolean }) {
       el.muted = true;
     }
     container.current?.append(el);
-    void el.play().catch(() => { if (track.kind === "audio") window.dispatchEvent(new Event("mp-audio-blocked")); });
+    void el.play().catch(() => {
+      if (track.kind === "audio")
+        window.dispatchEvent(new Event("mp-audio-blocked"));
+    });
     return () => {
       track.detach(el);
       el.remove();
@@ -242,16 +247,30 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
       }
     });
   const [historyId, setHistoryId] = useState<string | null>(null);
-  const viewedSession = data?.sessions.find(s => s.id === historyId) || session;
+  const viewedSession =
+    data?.sessions.find((s) => s.id === historyId) || session;
   const viewingLatest = viewedSession?.id === session?.id;
-  const viewedPerson = data?.profiles.find(p => p.id === viewedSession?.profile)?.interviewer;
-  const scoreGenerating = !!session && (state.scorePending || ["queued", "running"].includes(session.scoreStatus || "") || !!session.captionFinishing);
+  const viewedPerson = data?.profiles.find(
+    (p) => p.id === viewedSession?.profile,
+  )?.interviewer;
+  const scoreGenerating =
+    !!session &&
+    (state.scorePending ||
+      ["queued", "running"].includes(session.scoreStatus || "") ||
+      !!session.captionFinishing);
   const panel = mobile ? mobilePanel : desktopPanel;
   const togglePanel = (open: boolean) =>
     mobile ? setMobilePanel(open) : setDesktopPanel(open);
   useEffect(() => () => engine.dispose(), [engine]);
   useEffect(() => {
-    void engine.refresh().catch(() => engine.note("Room settings could not load. Try reopening the room.", true));
+    void engine
+      .refresh()
+      .catch(() =>
+        engine.note(
+          "Room settings could not load. Try reopening the room.",
+          true,
+        ),
+      );
   }, [engine]);
   useEffect(() => {
     const mq = matchMedia("(max-width:680px)");
@@ -320,32 +339,43 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
   }, [width]);
   const local = engine.local();
   const settingsMenu = (
-<RoomSettings
-          profile={state.profile}
-          onProfile={data?.host ? engine.setProfile : undefined}
-          profiles={(data?.profiles || []).map((p) => ({
-            value: p.id,
-            label:
-              (
-                {
-                  "yc-10": "YC",
-                  "speedrun-10": "Speedrun",
-                  "speedrun-10-hard": "Speedrun · hard",
-                } as Record<string, string>
-              )[p.id] || p.title,
-          }))}
-          onContext={data?.host ? openContext : undefined}
-          contextDisabled={state.busy || active}
-        />
+    <RoomSettings
+      profile={state.profile}
+      onProfile={data?.host ? engine.setProfile : undefined}
+      profiles={(data?.profiles || []).map((p) => ({
+        value: p.id,
+        label:
+          (
+            {
+              "yc-10": "YC",
+              "speedrun-10": "Speedrun",
+              "speedrun-10-hard": "Speedrun · hard",
+            } as Record<string, string>
+          )[p.id] || p.title,
+      }))}
+      onContext={data?.host ? openContext : undefined}
+      contextDisabled={state.busy || active}
+    />
   );
-  const researching = ["queued", "searching"].includes(data?.research?.status || "");
+  const pendingPreparation = ["queued", "searching"].includes(
+    data?.preparation?.status || "",
+  );
+  const researching =
+    pendingPreparation ||
+    ["queued", "searching"].includes(data?.research?.status || "");
   const interviewControls = (
-      <div className="session-pill" role="group" aria-label="Interview controls">
+    <div className="session-pill" role="group" aria-label="Interview controls">
       {data?.host ? (
-        <section id="host" className="session-action"
+        <section
+          id="host"
+          className="session-action"
           data-tooltip={researching && !active ? "" : undefined}
-          data-tooltip-text={researching && !active ? "Researching interviewer…" : undefined}
-          aria-label={researching && !active ? "Researching interviewer…" : undefined}
+          data-tooltip-text={
+            researching && !active ? "Preparing interview…" : undefined
+          }
+          aria-label={
+            researching && !active ? "Preparing interview…" : undefined
+          }
           tabIndex={researching && !active ? 0 : undefined}
         >
           {active ? (
@@ -364,7 +394,7 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
               disabled={
                 state.busy ||
                 !data.enabled ||
-                ["queued", "searching"].includes(data.research?.status || "") ||
+                researching ||
                 (!data.queueEnabled && data.busy)
               }
               onClick={() => void action(() => engine.start(currentContext()))}
@@ -377,15 +407,32 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
       ) : (
         <span id="guest-note">Waiting for host</span>
       )}
-        <span id="clock" aria-label="Interview time remaining" className={active ? "running" : ""}>
-          {Math.floor(state.seconds / 60)}:
-          {String(state.seconds % 60).padStart(2, "0")}
-        </span>
-      </div>
+      <span
+        id="clock"
+        aria-label="Interview time remaining"
+        className={active ? "running" : ""}
+      >
+        {Math.floor(state.seconds / 60)}:
+        {String(state.seconds % 60).padStart(2, "0")}
+      </span>
+    </div>
   );
   return (
     <>
-      {createPortal(<><RoomPill grant={grant} count={state.connected ? state.participants.filter(p => p.identity !== "interviewer").length : undefined} /></>, document.getElementById("room-header")!)}
+      {createPortal(
+        <>
+          <RoomPill
+            grant={grant}
+            count={
+              state.connected
+                ? state.participants.filter((p) => p.identity !== "interviewer")
+                    .length
+                : undefined
+            }
+          />
+        </>,
+        document.getElementById("room-header")!,
+      )}
       {state.connected &&
         data?.research &&
         data.research.status !== "ready" &&
@@ -414,13 +461,21 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
         <section id="call">
           {state.queueWaiting && (
             <div id="queue-banner" aria-labelledby="queue-title">
-              <span className="queue-emoji" aria-hidden="true">🙇</span>
+              <span className="queue-emoji" aria-hidden="true">
+                🙇
+              </span>
               <h2 id="queue-title">Waiting for an interviewer</h2>
               <span id="queue-message" role="status">
-                {state.queue ? `Position ${state.queue} in queue` : "Checking availability…"}
+                {state.queue
+                  ? `Position ${state.queue} in queue`
+                  : "Checking availability…"}
               </span>
-              <p className="queue-hint">Your interview starts automatically when a slot opens.</p>
-              <button id="cancel-queue" onClick={engine.cancelQueue}>Leave queue</button>
+              <p className="queue-hint">
+                Your interview starts automatically when a slot opens.
+              </p>
+              <button id="cancel-queue" onClick={engine.cancelQueue}>
+                Leave queue
+              </button>
             </div>
           )}
           <div className="workspace">
@@ -431,7 +486,11 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
                 ) && (
                   <InterviewerStandby
                     person={person}
-                    research={data?.research}
+                    research={
+                      data?.preparation && data.preparation.status !== "ready"
+                        ? data.preparation
+                        : data?.research
+                    }
                     ended={session?.status === "complete"}
                     active={session?.status === "live"}
                   />
@@ -502,25 +561,75 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
                     <Tabs.Trigger value="transcript" id="transcript-tab">
                       Transcript
                     </Tabs.Trigger>
-                    <Tabs.Trigger value="scorecard" id="scorecard-tab" data-generating={scoreGenerating || undefined}>
+                    <Tabs.Trigger
+                      value="scorecard"
+                      id="scorecard-tab"
+                      data-generating={scoreGenerating || undefined}
+                    >
                       Scorecard
                     </Tabs.Trigger>
                   </Tabs.List>
                   <Menu.Root>
                     <Menu.Trigger asChild>
-                      <IconButton id="interview-history" className="icon-only" icon="history" label="Interview history" />
+                      <IconButton
+                        id="interview-history"
+                        className="icon-only"
+                        icon="history"
+                        label="Interview history"
+                      />
                     </Menu.Trigger>
                     <Menu.Portal>
-                      <Menu.Content className="settings-menu history-menu" align="end" sideOffset={8} collisionPadding={12} aria-label="Interview history">
-                        <Menu.Label className="history-menu-label">Interviews</Menu.Label>
-                        {!data?.sessions.length && <div className="history-menu-empty">No interviews yet</div>}
-                        <Menu.RadioGroup value={viewedSession?.id || ""} onValueChange={id => setHistoryId(id === session?.id ? null : id)}>
-                          {data?.sessions.map((item, index) => <Menu.RadioItem className="history-item" key={item.id} value={item.id}>
-                            <span>{item.started ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(item.started) : `Interview ${data.sessions.length - index}`}
-                              <small>{["live", "connecting", "closing"].includes(item.status) ? "In progress" : item.status === "complete" ? "Completed" : item.status}</small>
-                            </span>
-                            <Menu.ItemIndicator><Icon name="check" /></Menu.ItemIndicator>
-                          </Menu.RadioItem>)}
+                      <Menu.Content
+                        className="settings-menu history-menu"
+                        align="end"
+                        sideOffset={8}
+                        collisionPadding={12}
+                        aria-label="Interview history"
+                      >
+                        <Menu.Label className="history-menu-label">
+                          Interviews
+                        </Menu.Label>
+                        {!data?.sessions.length && (
+                          <div className="history-menu-empty">
+                            No interviews yet
+                          </div>
+                        )}
+                        <Menu.RadioGroup
+                          value={viewedSession?.id || ""}
+                          onValueChange={(id) =>
+                            setHistoryId(id === session?.id ? null : id)
+                          }
+                        >
+                          {data?.sessions.map((item, index) => (
+                            <Menu.RadioItem
+                              className="history-item"
+                              key={item.id}
+                              value={item.id}
+                            >
+                              <span>
+                                {item.started
+                                  ? new Intl.DateTimeFormat(undefined, {
+                                      month: "short",
+                                      day: "numeric",
+                                      hour: "numeric",
+                                      minute: "2-digit",
+                                    }).format(item.started)
+                                  : `Interview ${data.sessions.length - index}`}
+                                <small>
+                                  {["live", "connecting", "closing"].includes(
+                                    item.status,
+                                  )
+                                    ? "In progress"
+                                    : item.status === "complete"
+                                      ? "Completed"
+                                      : item.status}
+                                </small>
+                              </span>
+                              <Menu.ItemIndicator>
+                                <Icon name="check" />
+                              </Menu.ItemIndicator>
+                            </Menu.RadioItem>
+                          ))}
                         </Menu.RadioGroup>
                       </Menu.Content>
                     </Menu.Portal>
@@ -536,7 +645,14 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
                     }}
                   />
                 </div>
-                {!viewingLatest && viewedSession && <div className="history-selection">Previous interview <button onClick={() => setHistoryId(null)}>Back to latest</button></div>}
+                {!viewingLatest && viewedSession && (
+                  <div className="history-selection">
+                    Previous interview{" "}
+                    <button onClick={() => setHistoryId(null)}>
+                      Back to latest
+                    </button>
+                  </div>
+                )}
                 {viewingLatest && active && session?.agendaWarning && (
                   <div id="agenda-warning" className="warning" role="alert">
                     {session.agendaWarning}
@@ -548,9 +664,22 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
                   forceMount
                   hidden={tab !== "transcript"}
                 >
-                  {active && viewingLatest && state.participants.some(p => p.isSpeaking && p.identity !== "interviewer") && (
-                    <div className="transcript-speaking"><Icon name="mic" />{state.participants.filter(p => p.isSpeaking && p.identity !== "interviewer").map(p => p.name || "Participant").join(", ")} speaking…</div>
-                  )}
+                  {active &&
+                    viewingLatest &&
+                    state.participants.some(
+                      (p) => p.isSpeaking && p.identity !== "interviewer",
+                    ) && (
+                      <div className="transcript-speaking">
+                        <Icon name="mic" />
+                        {state.participants
+                          .filter(
+                            (p) => p.isSpeaking && p.identity !== "interviewer",
+                          )
+                          .map((p) => p.name || "Participant")
+                          .join(", ")}{" "}
+                        speaking…
+                      </div>
+                    )}
                   <Transcript
                     items={viewedSession?.transcript || []}
                     person={viewedPerson}
@@ -583,7 +712,8 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
                         id="score-status"
                         className="score-status"
                         role={
-                          (viewingLatest && state.scoreError) || viewedSession?.scoreError
+                          (viewingLatest && state.scoreError) ||
+                          viewedSession?.scoreError
                             ? "alert"
                             : "status"
                         }
@@ -594,11 +724,16 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
                           ? "Generating scorecard… Up to 2 minutes."
                           : viewedSession?.captionFinishing
                             ? "Finishing transcript…"
-                            : (viewingLatest && state.scoreError) || viewedSession?.scoreError}
+                            : (viewingLatest && state.scoreError) ||
+                              viewedSession?.scoreError}
                       </p>
                     )}
-                  {viewingLatest && data?.host && viewedSession &&
-                    ["complete", "unconfirmed"].includes(viewedSession?.status || "") &&
+                  {viewingLatest &&
+                    data?.host &&
+                    viewedSession &&
+                    ["complete", "unconfirmed"].includes(
+                      viewedSession?.status || "",
+                    ) &&
                     !viewedSession?.scorecard &&
                     (viewedSession.scoreStatus === "failed" ||
                       !!(viewingLatest && state.scoreError)) && (
@@ -612,9 +747,10 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
                         onClick={() => void action(engine.score)}
                       >
                         <Icon name="sparkles" />
-                        {(viewingLatest && state.scorePending)
+                        {viewingLatest && state.scorePending
                           ? "Generating scorecard…"
-                          : (viewingLatest && state.scoreError) || viewedSession.scoreError
+                          : (viewingLatest && state.scoreError) ||
+                              viewedSession.scoreError
                             ? "Retry scorecard"
                             : "Retry scorecard"}
                       </button>
@@ -624,74 +760,133 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
             </aside>
           </div>
           <div className="call-dock">
-          <nav className="call-controls" aria-label="Call controls">
-            <IconButton
-              id="mic"
-              icon={local?.isMicrophoneEnabled ? "mic" : "micOff"}
-              label={local?.isMicrophoneEnabled ? "Mute mic" : "Unmute mic"}
-              aria-pressed={!local?.isMicrophoneEnabled}
-              onClick={() => void action(engine.mic)}
-            />
-            <IconButton
-              id="camera"
-              icon={local?.isCameraEnabled ? "camera" : "cameraOff"}
-              label={local?.isCameraEnabled ? "Camera off" : "Camera on"}
-              aria-pressed={!local?.isCameraEnabled}
-              onClick={() => void action(engine.camera)}
-            />
-            {(["transcript", "scorecard"] as const).map(view => (
+            <nav className="call-controls" aria-label="Call controls">
               <IconButton
-                key={view}
-                data-generating={view === "scorecard" && scoreGenerating || undefined}
-                id={`${view}-toggle`}
-                icon={view === "transcript" ? "chat" : "scorecard"}
-                label={view === "transcript" ? "Transcript" : "Scorecard"}
-                aria-pressed={panel && tab === view}
-                aria-expanded={panel && tab === view}
-                aria-controls="results"
-                onClick={() => {
-                  if (panel && tab === view) togglePanel(false);
-                  else { setTab(view); togglePanel(true); }
-                }}
+                id="mic"
+                icon={local?.isMicrophoneEnabled ? "mic" : "micOff"}
+                label={local?.isMicrophoneEnabled ? "Mute mic" : "Unmute mic"}
+                aria-pressed={!local?.isMicrophoneEnabled}
+                onClick={() => void action(engine.mic)}
               />
-            ))}
-            {settingsMenu}
-            <IconButton
-              id="leave"
-              className="leave"
-              icon="phone"
-              label="Leave room"
-              onClick={() => void action(engine.leave)}
-            />
-          </nav>
-          {interviewControls}
+              <IconButton
+                id="camera"
+                icon={local?.isCameraEnabled ? "camera" : "cameraOff"}
+                label={local?.isCameraEnabled ? "Camera off" : "Camera on"}
+                aria-pressed={!local?.isCameraEnabled}
+                onClick={() => void action(engine.camera)}
+              />
+              {(["transcript", "scorecard"] as const).map((view) => (
+                <IconButton
+                  key={view}
+                  data-generating={
+                    (view === "scorecard" && scoreGenerating) || undefined
+                  }
+                  id={`${view}-toggle`}
+                  icon={view === "transcript" ? "chat" : "scorecard"}
+                  label={view === "transcript" ? "Transcript" : "Scorecard"}
+                  aria-pressed={panel && tab === view}
+                  aria-expanded={panel && tab === view}
+                  aria-controls="results"
+                  onClick={() => {
+                    if (panel && tab === view) togglePanel(false);
+                    else {
+                      setTab(view);
+                      togglePanel(true);
+                    }
+                  }}
+                />
+              ))}
+              {settingsMenu}
+              <IconButton
+                id="leave"
+                className="leave"
+                icon="phone"
+                label="Leave room"
+                onClick={() => void action(engine.leave)}
+              />
+            </nav>
+            {interviewControls}
           </div>
         </section>
       ) : (
         <>
           <Preview engine={engine} settings={settingsMenu} />
-          {!!data?.sessions.length && <button className="secondary" onClick={() => setResultsOpen(true)}>View interview results</button>}
+          {!!data?.sessions.length && (
+            <button className="secondary" onClick={() => setResultsOpen(true)}>
+              View interview results
+            </button>
+          )}
         </>
       )}
       <Dialog.Root open={resultsOpen} onOpenChange={setResultsOpen}>
-        <Dialog.Portal><Dialog.Overlay className="context-overlay" />
+        <Dialog.Portal>
+          <Dialog.Overlay className="context-overlay" />
           <Dialog.Content className="react-dialog">
-            <div className="dialog-heading"><Dialog.Title>Interview results</Dialog.Title>
-              <Dialog.Close asChild><IconButton icon="close" label="Close results" className="icon-only" /></Dialog.Close>
+            <div className="dialog-heading">
+              <Dialog.Title>Interview results</Dialog.Title>
+              <Dialog.Close asChild>
+                <IconButton
+                  icon="close"
+                  label="Close results"
+                  className="icon-only"
+                />
+              </Dialog.Close>
             </div>
-            <Dialog.Description className="sr-only">Transcripts and scorecards from this room.</Dialog.Description>
-            <div style={{ overflowY: "auto", minHeight: 0, padding: "0 24px 24px" }}>
-              {data?.sessions.map(item => <section key={item.id} style={{ marginBlock: 24 }}>
-                <h3>{item.started ? new Date(item.started).toLocaleString() : "Interview"}</h3>
-                {item.scorecard ? <Scorecard card={item.scorecard} /> : <p role="status">{item.scoreError || (["live", "connecting", "closing"].includes(item.status) ? "Interview in progress." : "Preparing your scorecard…")}</p>}
-                {!item.scorecard && item.id === session?.id && item.scoreStatus === "failed" && <button disabled={state.scorePending} onClick={() => void action(engine.score)}>Retry scorecard</button>}
-                <details><summary>Transcript</summary><Transcript items={item.transcript || []} person={person} /></details>
-              </section>)}
+            <Dialog.Description className="sr-only">
+              Transcripts and scorecards from this room.
+            </Dialog.Description>
+            <div
+              style={{
+                overflowY: "auto",
+                minHeight: 0,
+                padding: "0 24px 24px",
+              }}
+            >
+              {data?.sessions.map((item) => (
+                <section key={item.id} style={{ marginBlock: 24 }}>
+                  <h3>
+                    {item.started
+                      ? new Date(item.started).toLocaleString()
+                      : "Interview"}
+                  </h3>
+                  {item.scorecard ? (
+                    <Scorecard card={item.scorecard} />
+                  ) : (
+                    <p role="status">
+                      {item.scoreError ||
+                        (["live", "connecting", "closing"].includes(item.status)
+                          ? "Interview in progress."
+                          : "Preparing your scorecard…")}
+                    </p>
+                  )}
+                  {!item.scorecard &&
+                    item.id === session?.id &&
+                    item.scoreStatus === "failed" && (
+                      <button
+                        disabled={state.scorePending}
+                        onClick={() => void action(engine.score)}
+                      >
+                        Retry scorecard
+                      </button>
+                    )}
+                  <details>
+                    <summary>Transcript</summary>
+                    <Transcript items={item.transcript || []} person={person} />
+                  </details>
+                </section>
+              ))}
             </div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-      {state.audioBlocked && <div className="notice" role="alert"><span>Audio is paused.</span><button onClick={() => void action(engine.sound)}>Enable audio</button></div>}
+      {state.audioBlocked && (
+        <div className="notice" role="alert">
+          <span>Audio is paused.</span>
+          <button onClick={() => void action(engine.sound)}>
+            Enable audio
+          </button>
+        </div>
+      )}
       <Dialog.Root
         open={contextOpen}
         onOpenChange={(open) => {
@@ -716,7 +911,9 @@ export default function CallRoom({ grant: initial }: { grant: Grant }) {
           >
             <div className="dialog-heading">
               <div>
-                <Dialog.Title id="context-title" tabIndex={-1}>Company context</Dialog.Title>
+                <Dialog.Title id="context-title" tabIndex={-1}>
+                  Company context
+                </Dialog.Title>
                 <Dialog.Description>
                   Application and interviewer details.
                 </Dialog.Description>

@@ -63,6 +63,7 @@ export interface Research {
 }
 export interface RoomState {
   research?: Research;
+  preparation?: Research;
   host: boolean;
   profiles: Profile[];
   application: string;

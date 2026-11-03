@@ -40,9 +40,15 @@ function App() {
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.inputMode = "pointer";
-    const pointer = () => { root.dataset.inputMode = "pointer"; };
+    const pointer = () => {
+      root.dataset.inputMode = "pointer";
+    };
     const keyboard = (event: KeyboardEvent) => {
-      if (["Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+      if (
+        ["Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(
+          event.key,
+        )
+      ) {
         root.dataset.inputMode = "keyboard";
       }
     };
@@ -57,6 +63,11 @@ function App() {
   const [settings, setSettings] = useState<Config>(),
     [grant, setGrant] = useState<Grant>(),
     [error, setError] = useState("");
+  useEffect(() => {
+    document.title = grant
+      ? "Practice room | AceYourCall"
+      : "New practice | AceYourCall";
+  }, [grant]);
   const enter = (room: Grant) => {
     navigateRoom(room);
     setGrant(room);
@@ -125,7 +136,13 @@ function App() {
             if (document.body.classList.contains("in-call")) e.preventDefault();
           }}
         >
-          <img className="ace-logo" src="/aceyourcall-logo.svg" alt="aceyourcall" width="680" height="126" />
+          <img
+            className="ace-logo"
+            src="/aceyourcall-logo.svg"
+            alt="aceyourcall"
+            width="680"
+            height="126"
+          />
         </a>
         <div id="room-header" />
         <ThemeToggle />

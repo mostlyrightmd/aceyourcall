@@ -27,7 +27,7 @@ export function saveHost(grant: Grant) {
       JSON.stringify({
         key: grant.key,
         program: grant.program,
-        expires: Date.now() + 86400000,
+        expires: Date.now() + 7 * 86400000,
       }),
     );
   } catch {}
@@ -35,7 +35,11 @@ export function saveHost(grant: Grant) {
 function storedHost(id: string) {
   try {
     const saved = JSON.parse(localStorage.getItem("mp-host:" + id) || "null");
-    if (saved?.expires > Date.now())
+    if (
+      typeof saved?.key === "string" &&
+      Number.isFinite(saved.expires) &&
+      saved.expires + 6 * 86400000 > Date.now()
+    )
       return saved as { key: string; program?: string };
     localStorage.removeItem("mp-host:" + id);
   } catch {}
@@ -57,11 +61,22 @@ export async function resolveRoom(value: string): Promise<Grant> {
   let key = saved?.key || result.guest;
   if (key !== result.guest) {
     try {
-      await request("/rooms/" + result.id + "/link", undefined, key);
+      const verified = await request<{ host: boolean }>(
+        "/rooms/" + result.id + "/link",
+        undefined,
+        key,
+      );
+      if (!verified.host) throw Error("Host grant expired");
+      saveHost({
+        id: result.id,
+        key,
+        program: saved?.program || "speedrun-10",
+      });
       await request("/creator-access", { roomId: result.id }, key).catch(
         () => {},
       );
     } catch {
+      localStorage.removeItem("mp-host:" + result.id);
       key = result.guest;
     }
   }
