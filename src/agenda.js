@@ -37,10 +37,12 @@ export async function inspectAgenda({
     new_founder_speech: input.slice(-4000),
   });
   if (Buffer.byteLength(data) > 55000)
-    throw Error("Agenda context exceeds bound");
+    throw Object.assign(Error("Agenda context exceeds bound"), {
+      code: "agenda_context_limit",
+    });
   const r = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(20000),
     headers: {
       Authorization: `Bearer ${key()}`,
       "Content-Type": "application/json",
@@ -49,6 +51,7 @@ export async function inspectAgenda({
       model: "gpt-6-luna",
       store: false,
       max_output_tokens: 1200,
+      reasoning: { effort: "low" },
       instructions: agendaPrompt,
       input: data,
       text: {
@@ -60,12 +63,22 @@ export async function inspectAgenda({
         },
       },
     }),
+  }).catch((error) => {
+    throw Object.assign(Error("Agenda transport unavailable"), {
+      code:
+        error.name === "TimeoutError" ? "agenda_timeout" : "agenda_transport",
+    });
   });
-  if (!r.ok) throw Error("Agenda check unavailable");
+  if (!r.ok)
+    throw Object.assign(Error("Agenda check unavailable"), {
+      code: "agenda_http_" + r.status,
+    });
   const result = await r.json();
   const u = result.usage;
   if (!Number.isFinite(u?.input_tokens) || !Number.isFinite(u?.output_tokens))
-    throw Error("Agenda usage missing");
+    throw Object.assign(Error("Agenda usage missing"), {
+      code: "agenda_usage_missing",
+    });
   const cost = (u.input_tokens * 0.1 + u.output_tokens * 0.5) / 1e6;
   const text = (result.output || [])
     .flatMap((x) => x.content || [])

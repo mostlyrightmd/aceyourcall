@@ -210,13 +210,16 @@ export function createEngine(grant: Grant) {
         notified = current.id;
         if (current.id === sessionId) await cleanupAI();
         note(
-          current.status === "unconfirmed"
-            ? "Interview ended. Preparing your feedback…"
-            : current.stopReason === "agenda_derailment"
-              ? "The interviewer left after continued off-topic requests."
-              : current.stopReason === "agenda_unavailable"
-                ? "Interview ended because agenda supervision became unavailable. Please try again."
-                : "Interview finished.",
+          current.interrupted
+            ? "The interviewer disconnected. Your room is still open. Please start a new interview."
+            : current.status === "unconfirmed"
+              ? "Interview ended. Preparing your feedback…"
+              : current.stopReason === "agenda_derailment"
+                ? "The interviewer left after continued off-topic requests."
+                : current.stopReason === "agenda_unavailable"
+                  ? "Interview ended because agenda supervision became unavailable. Please try again."
+                  : "Interview finished.",
+          !!current.interrupted,
         );
       }
     } finally {

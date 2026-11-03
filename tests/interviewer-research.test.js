@@ -174,3 +174,16 @@ test("startup deletes expired queued research even with no future requests", () 
   assert.equal(restarted.get(j.id), null);
   store.db.close();
 });
+
+test("equivalent LinkedIn URL forms share the interviewer cache", () => {
+  assert.equal(
+    researchIdentity({
+      name: "Alex  Smith",
+      linkedin: "https://linkedin.com/in/alex/",
+    }).id,
+    researchIdentity({
+      name: "Alex Smith",
+      linkedin: "https://www.linkedin.com/in/alex",
+    }).id,
+  );
+});

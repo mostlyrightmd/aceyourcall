@@ -2,7 +2,7 @@ import {
   preparationCache,
   PREPARATION_RESERVE,
 } from "./business-preparation.js";
-import { canScore, endReason } from "./session-lifecycle.js";
+import { canScore, endReason, providerClosure } from "./session-lifecycle.js";
 import { capture } from "./analytics.js";
 import { completedInterviews } from "./public-stats.js";
 import { researchCache, RESEARCH_RESERVE } from "./interviewer-research.js";
@@ -341,7 +341,14 @@ async function stop(s, reason) {
   }, 1500);
 }
 async function checkAgenda(s) {
-  if (s.agendaBusy || s.stopping || s.done || !s.pendingInput.length) return;
+  if (
+    s.agendaBusy ||
+    s.stopping ||
+    s.done ||
+    !s.pendingInput.length ||
+    Date.now() < (s.agendaRetryAfter || 0)
+  )
+    return;
   // Debounce transcript fragments, but still inspect a prolonged monologue.
   if (
     Date.now() - s.inputReceived < 1800 &&
@@ -393,6 +400,8 @@ async function checkAgenda(s) {
       throw error;
     }
     s.agendaFailures = 0;
+    s.agendaRetryAfter = 0;
+    s.record.supervisionDegraded = false;
     const validIds = new Set(s.record.questions.map((q) => q.id));
     s.record.coveredQuestions = [
       ...new Set([
@@ -461,13 +470,16 @@ async function checkAgenda(s) {
   } catch (error) {
     s.agendaFailures++;
     s.record.errors.push({
-      code: ["agenda_output_incomplete", "agenda_invalid_decision"].includes(
-        error.code,
+      code: /^(agenda_(output_incomplete|invalid_decision|context_limit|timeout|transport|usage_missing)|agenda_http_(400|401|403|408|429|500|502|503|504))$/.test(
+        error.code || "",
       )
         ? error.code
         : "agenda_check_failed",
     });
-    if (s.agendaFailures >= 3) stop(s, "agenda_unavailable");
+    // A background classifier outage is not founder misconduct or a broken
+    // voice connection. Keep the prompted interview running, with bounded retries.
+    s.record.supervisionDegraded = true;
+    s.agendaRetryAfter = Date.now() + Math.min(20000, s.agendaFailures * 2000);
   } finally {
     s.agendaBusy = false;
     checking--;
@@ -556,6 +568,7 @@ function handle(s, e) {
   }
   persist(s);
   if (e.type === "session.closed") {
+    providerClosure(s.record, e, s.stopping);
     s.record.remoteClosed = true;
     finalize(s, Number.isFinite(e.usage?.seconds));
   }

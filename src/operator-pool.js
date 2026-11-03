@@ -1,4 +1,7 @@
-import { createHash } from "node:crypto";
+import {
+  preparationIdentity,
+  legacyPreparationIdentity,
+} from "./preparation-identity.js";
 import { readFileSync } from "node:fs";
 export function operatorPool(db, fallback, request = fetch) {
   const workers = process.env.MP_OPERATOR_POOL_PATH
@@ -31,6 +34,9 @@ export function operatorPool(db, fallback, request = fetch) {
     throw Error("Duplicate operator ports");
   db.exec(
     "CREATE TABLE IF NOT EXISTS admission_queue (room TEXT PRIMARY KEY, joined INTEGER, seen INTEGER, worker TEXT, lease INTEGER, starting INTEGER DEFAULT 0)",
+  );
+  db.exec(
+    "CREATE TABLE IF NOT EXISTS preparation_affinity (id TEXT PRIMARY KEY, worker TEXT NOT NULL, job TEXT NOT NULL, expires INTEGER NOT NULL)",
   );
   const call = async (path, body, id = workers[0].id) => {
     const w = workers.find((w) => w.id === id);
@@ -238,19 +244,38 @@ export function operatorPool(db, fallback, request = fetch) {
     });
   const prepare = (room, context) =>
     locked(async () => {
-      const id = createHash("sha256")
-        .update(
-          JSON.stringify([1, room.id, context.application, context.facts]),
-        )
-        .digest("hex");
-      if (room.preparation?.id === id) {
-        const worker = room.preparation.worker || workers[0].id;
+      db.prepare("DELETE FROM preparation_affinity WHERE expires <= ?").run(
+        Date.now(),
+      );
+      const id = preparationIdentity(context);
+      const remember = (job, worker) => {
+        db.prepare(
+          "INSERT OR REPLACE INTO preparation_affinity VALUES(?,?,?,?)",
+        ).run(id, worker, job.id, job.expires || Date.now() + 7 * 86400000);
+        return { ...job, worker };
+      };
+      const sameContext =
+        room.preparation?.id === id ||
+        room.preparation?.id === legacyPreparationIdentity(room.id, context);
+      const affinity = sameContext
+        ? {
+            worker: room.preparation.worker || workers[0].id,
+            job: room.preparation.id,
+          }
+        : db
+            .prepare("SELECT worker,job FROM preparation_affinity WHERE id=?")
+            .get(id);
+      if (affinity && workers.some((w) => w.id === affinity.worker)) {
         const old = await call(
-          "/api/business-preparation/" + id,
+          "/api/business-preparation/" + affinity.job,
           undefined,
-          worker,
+          affinity.worker,
         );
-        if (old && old.status !== "failed") return { ...old, worker };
+        if (
+          old &&
+          (old.status !== "failed" || Date.now() - old.updated < 60000)
+        )
+          return remember(old, affinity.worker);
       }
       const states = await summary();
       const eligible = states
@@ -274,7 +299,7 @@ export function operatorPool(db, fallback, request = fetch) {
         { roomId: room.id, context },
         worker,
       );
-      return { ...job, worker };
+      return remember(job, worker);
     });
   return {
     workers,

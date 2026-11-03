@@ -10,6 +10,7 @@ test("agenda output budget covers reasoning and all candidate IDs; incomplete ou
     globalThis.fetch = async (_url, init) => {
       const b = JSON.parse(init.body);
       assert.equal(b.max_output_tokens, 1200);
+      assert.equal(b.reasoning.effort, "low");
       // Worst-case byte-sized input tokens and max output still fit the reservation.
       assert.ok(
         (55000 * 0.1 + b.max_output_tokens * 0.5) / 1e6 < AGENDA_RESERVE,
