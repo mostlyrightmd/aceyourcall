@@ -1,0 +1,526 @@
+/* Shared semantic tokens: entry, preview, room, dialogs and legal pages. */
+:root {
+  --page-bg: #080808;
+  --text-primary: #f4f4f4;
+  --text-secondary: #aaa;
+  --text-muted: #909090;
+  --panel-bg: #151515;
+  --control-bg: #242424;
+  --control-hover: #333;
+  --field-bg: #ffffff0d;
+  --field-hover: #ffffff12;
+  --field-border: #ffffff20;
+  --field-border-hover: #ffffff50;
+  --field-focus: #bdbdbd;
+  --action-bg: #f4f4f4;
+  --action-text: #111;
+  --theme-shadow: 0 8px 32px #0003;
+  --theme-motion: 260ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --page-bg: #f7f7f5;
+  --text-primary: #202020;
+  --text-secondary: #515151;
+  --text-muted: #626262;
+  --panel-bg: #ffffff;
+  --control-bg: #e9e9e7;
+  --control-hover: #dededb;
+  --field-bg: #ffffff70;
+  --field-hover: #ffffffa8;
+  --field-border: #00000024;
+  --field-border-hover: #00000050;
+  --field-focus: #555;
+  --action-bg: #202020;
+  --action-text: #fff;
+  --theme-shadow: 0 8px 32px #00000012;
+  --muted: #626262;
+  --surface: #fff;
+  --raised: #e9e9e7;
+  --shadow: var(--theme-shadow);
+  --select-surface: #fff;
+  --select-highlight: #ededeb;
+  --select-text: #333;
+  --select-text-active: #111;
+  --select-shadow: 0 16px 48px #0002, 0 3px 10px #0001;
+}
+:root[data-theme] {
+  background: var(--page-bg);
+  color: var(--text-primary);
+}
+:root[data-theme] body {
+  color: var(--text-primary);
+}
+:root[data-theme] body.entry-home::before,
+:root[data-theme] body.preview-page::before {
+  background: url("/theme-dark.png") 75% center / cover no-repeat;
+  opacity: 1;
+  transition: opacity var(--theme-motion);
+}
+:root[data-theme] body.entry-home::after,
+:root[data-theme] body.preview-page::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: url("/theme-light.png") 75% center / cover no-repeat;
+  opacity: 0;
+  transition: opacity var(--theme-motion);
+  z-index: 0;
+}
+:root[data-theme="light"] body.entry-home::after,
+:root[data-theme="light"] body.preview-page::after {
+  opacity: 1;
+}
+:root[data-theme] .topbar,
+:root[data-theme] .legal-header {
+  color: var(--text-primary);
+}
+:root[data-theme="light"] .topbar {
+  background: var(--page-bg);
+}
+:root[data-theme] body.entry-home .topbar,
+:root[data-theme] body.preview-page .topbar {
+  background: transparent;
+}
+:root[data-theme] .brand,
+:root[data-theme] .brand strong {
+  color: var(--text-primary);
+}
+:root[data-theme] .powered-by {
+  color: var(--text-secondary);
+}
+:root[data-theme] input:not([type="checkbox"]),
+:root[data-theme] textarea,
+:root[data-theme] select,
+:root[data-theme] body.entry-home #application-form .profile-trigger,
+:root[data-theme] .preview-controls {
+  background: var(--field-bg);
+  border-color: var(--field-border);
+  color: var(--text-primary);
+}
+:root[data-theme] input:not([type="checkbox"]):hover,
+:root[data-theme] textarea:hover,
+:root[data-theme] .profile-trigger:hover,
+:root[data-theme] body.entry-home #application-form .profile-trigger:hover {
+  background: var(--field-hover);
+  border-color: var(--field-border-hover);
+}
+:root[data-theme] input:not([type="checkbox"]):focus,
+:root[data-theme] textarea:focus,
+:root[data-theme] .profile-trigger:focus-visible,
+:root[data-theme]
+  body.entry-home
+  #application-form
+  .profile-trigger:focus-visible {
+  outline: none;
+  border-color: var(--field-focus);
+}
+:root[data-theme] input::placeholder,
+:root[data-theme] textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+:root[data-theme] body.entry-home #draft-dropzone {
+  background: var(--field-bg);
+  border-color: var(--field-border);
+  color: var(--text-primary);
+}
+:root[data-theme]
+  body.entry-home
+  #draft-dropzone:is(:hover, .is-dragging, :focus-within) {
+  background: var(--field-hover);
+  border-color: var(--field-focus);
+}
+:root[data-theme] button {
+  color: var(--text-primary);
+}
+:root[data-theme] button.primary,
+:root[data-theme] button.leave,
+:root[data-theme] #start {
+  background: var(--action-bg);
+  color: var(--action-text);
+}
+:root[data-theme="light"] button:hover:not(:disabled) {
+  background: var(--control-hover);
+}
+:root[data-theme="light"] button.primary:hover:not(:disabled),
+:root[data-theme="light"] button.leave:hover:not(:disabled),
+:root[data-theme="light"] #start:hover:not(:disabled) {
+  background: #383838;
+  color: #fff;
+}
+:root[data-theme] .preview-controls button {
+  background: var(--control-bg);
+}
+:root[data-theme] .preview-controls button[aria-pressed="false"] {
+  background: var(--action-bg);
+  color: var(--action-text);
+}
+:root[data-theme] .preview-controls button:hover {
+  background: var(--control-hover);
+  color: var(--text-primary);
+}
+:root[data-theme]
+  body.entry-home
+  :is(
+    label,
+    .onboarding-heading p,
+    .upload-hint,
+    .consent-footnote,
+    .check,
+    .text-button
+  ),
+:root[data-theme] .prejoin-form label {
+  color: var(--text-secondary);
+}
+:root[data-theme] .consent-footnote a {
+  color: var(--text-primary);
+}
+:root[data-theme="light"] #entry-modes {
+  background: #00000006;
+}
+:root[data-theme="light"] #entry-modes button {
+  color: var(--text-secondary);
+}
+:root[data-theme="light"] #entry-modes [data-state="active"] {
+  background: #ffffffb8;
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px #0001;
+}
+:root[data-theme="light"] .upload-separator {
+  color: var(--text-muted);
+}
+:root[data-theme="light"] body.entry-home .upload-separator::before,
+:root[data-theme="light"] body.entry-home .upload-separator::after {
+  background: #0002;
+}
+:root[data-theme="light"] .check input[type="checkbox"] {
+  background: #fff8;
+  border-color: #777;
+}
+:root[data-theme="light"] .check input[type="checkbox"]:checked {
+  background: #202020;
+  border-color: #202020;
+}
+:root[data-theme="light"] .check > .icon {
+  color: #fff;
+}
+:root[data-theme="light"]
+  :is(
+    .side-panel,
+    .react-dialog,
+    .research-status,
+    .call-controls,
+    .entry-card,
+    .legal-nav
+  ) {
+  background: var(--panel-bg);
+  color: var(--text-primary);
+  box-shadow: var(--theme-shadow);
+}
+:root[data-theme="light"] .entry-card:has(#lobby),
+:root[data-theme="light"] body.entry-home .entry-card {
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-theme="light"] .tile {
+  background: #e4e4e1;
+}
+:root[data-theme="light"] .tile .avatar {
+  background: #d2d2ce;
+  color: #333;
+}
+:root[data-theme="light"] .participant-name {
+  background: #ffffffd9;
+  color: #222;
+}
+:root[data-theme="light"]
+  :is(
+    .ai-disclosure,
+    .interviewer-standby .standby-content span,
+    .call-meta,
+    #session-status,
+    #clock,
+    .panel-tabs button,
+    .empty-state,
+    .empty,
+    .score-reason,
+    .score-limitations,
+    .dialog-heading p,
+    .dialog-body label,
+    .dialog-footer,
+    .transcript-turn p,
+    .transcript-turn time
+  ) {
+  color: var(--text-secondary);
+}
+:root[data-theme="light"]
+  :is(
+    .panel-tabs [data-state="active"],
+    .panel-tabs button[aria-selected="true"]
+  ) {
+  background: var(--control-bg);
+  color: var(--text-primary);
+}
+:root[data-theme="light"] :is(.dialog-footer, .dialog-actions) {
+  background: #f5f5f3;
+}
+:root[data-theme="light"] :is(.context-overlay, .react-overlay) {
+  background: #0005;
+}
+:root[data-theme="light"] .scorecard :is(p, li, blockquote) {
+  color: var(--text-secondary);
+}
+:root[data-theme="light"] body.legal-page {
+  background: var(--page-bg);
+}
+:root[data-theme="light"] .legal-content :is(p, li),
+:root[data-theme="light"] .legal-nav a,
+:root[data-theme="light"] .legal-header > a {
+  color: var(--text-secondary);
+}
+:root[data-theme="light"] .legal-content a,
+:root[data-theme="light"] .legal-nav a:is(:hover, [aria-current]) {
+  color: var(--text-primary);
+}
+:root[data-theme] :is(input, textarea)[aria-invalid="true"],
+:root[data-theme] body.entry-home [aria-invalid="true"] {
+  border-color: #c64141;
+}
+:root[data-theme="light"] .field-error {
+  color: #b32020;
+}
+/* One shared custom element supplies the Tabler control on every page. */
+theme-toggle {
+  display: inline-flex;
+}
+.page-theme-toggle {
+  margin-left: auto;
+}
+body.in-call .page-theme-toggle {
+  display: none;
+}
+.theme-toggle {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+:root[data-theme] .theme-toggle:hover {
+  background: var(--field-hover);
+}
+.theme-toggle span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transition:
+    transform var(--theme-motion),
+    opacity var(--theme-motion);
+}
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+.theme-sun {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+.theme-moon {
+  opacity: 0;
+  transform: rotate(-45deg) scale(0.65);
+}
+:root[data-theme="light"] .theme-sun {
+  opacity: 0;
+  transform: rotate(45deg) scale(0.65);
+}
+:root[data-theme="light"] .theme-moon {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+.theme-changing
+  :is(
+    button,
+    input,
+    textarea,
+    .topbar,
+    .side-panel,
+    .tile,
+    .react-dialog,
+    .legal-nav
+  ) {
+  transition:
+    background-color var(--theme-motion),
+    color var(--theme-motion),
+    border-color var(--theme-motion);
+}
+.settings-dialog {
+  width: min(420px, calc(100vw - 32px));
+}
+.settings-dialog .dialog-body {
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+}
+.settings-dialog .dialog-heading h2 {
+  margin: 0;
+}
+.legal-header {
+  gap: 20px;
+}
+.legal-header > a:nth-child(2) {
+  margin-left: auto;
+  font-size: 12px;
+  text-decoration: none;
+}
+@media (max-width: 760px) {
+  :root[data-theme] body.entry-home::before,
+  :root[data-theme] body.preview-page::before,
+  :root[data-theme] body.entry-home::after,
+  :root[data-theme] body.preview-page::after {
+    background-position: 86% center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme] *,
+  :root[data-theme] *::before,
+  :root[data-theme] *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+/* Content typography and call controls share the same semantic palette. */
+:root[data-theme]
+  :is(
+    .research-status summary,
+    .research-status a,
+    .score-label,
+    .score-row-heading strong,
+    .score-section-title,
+    .score-footnote h4
+  ),
+:root[data-theme] #scorecard :is(h3, h4),
+:root[data-theme] .transcript-turn strong {
+  color: var(--text-primary);
+}
+:root[data-theme] #scorecard :is(p, blockquote, summary, .eyebrow),
+:root[data-theme] .stage-status,
+:root[data-theme] body.entry-home #application-form summary,
+:root[data-theme] body.entry-home #application-form summary span {
+  color: var(--text-secondary);
+}
+:root[data-theme] #clock {
+  background: var(--control-bg);
+  color: var(--text-primary);
+}
+:root[data-theme] .call-controls .control {
+  background: var(--control-bg);
+  color: var(--text-primary);
+}
+:root[data-theme] .call-controls .control[aria-pressed="true"],
+:root[data-theme] .call-controls .control[aria-expanded="true"] {
+  background: var(--control-hover);
+  color: var(--text-primary);
+}
+:root[data-theme] .call-controls .control:hover {
+  background: var(--control-hover);
+}
+:root[data-theme="light"] .tile,
+:root[data-theme="light"] .avatar {
+  box-shadow: 0 2px 12px #0000000a;
+}
+:root[data-theme="light"] .ai-disclosure {
+  background: #ffffffd9;
+  color: var(--text-secondary);
+}
+:root[data-theme="light"] .answer-review {
+  background: #f1f1ef;
+}
+:root[data-theme="light"] meter,
+:root[data-theme="light"] meter::-webkit-meter-bar {
+  background: #e0e0dc;
+}
+:root[data-theme="light"] meter::-webkit-meter-optimum-value {
+  background: #555;
+}
+:root[data-theme="light"] meter::-moz-meter-bar {
+  background: #555;
+}
+:root[data-theme="light"] :is(.notice, #queue-banner) {
+  background: var(--panel-bg);
+  color: var(--text-primary);
+  box-shadow: var(--theme-shadow);
+}
+:root[data-theme="light"] #queue-banner button {
+  background: var(--control-bg);
+}
+:root[data-theme="light"]
+  :is(#application-error, #join-error, #code-error, .error-text) {
+  color: #b32020;
+}
+
+/* Shared page chrome: centered attribution and comfortable mobile safe areas. */
+:root[data-theme] .powered-by {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+:root[data-theme] body.preview-page {
+  background: var(--page-bg);
+}
+:root[data-theme] body.preview-page::before,
+:root[data-theme] body.preview-page::after {
+  display: none;
+}
+@media (max-width: 680px) {
+  body:not(.in-call) { --header: 80px; }
+  body:not(.in-call) .topbar {
+    padding: max(12px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) 12px max(24px, env(safe-area-inset-left));
+  }
+}
+/* Leave the centered attribution its own line beneath call controls. */
+:root[data-theme] body.in-call .powered-by {
+  bottom: max(3px, env(safe-area-inset-bottom));
+}
+body.in-call .call-controls {
+  bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+/* Attribution follows page content; the page scrolls as a single surface. */
+:root[data-theme] .powered-by {
+  position: static;
+  transform: none;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 12px 0 max(16px, env(safe-area-inset-bottom));
+}
+body:not(.in-call) #root {
+  height: 100dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+body:not(.in-call) #root > .topbar { flex-shrink: 0; }
+body:not(.in-call) #root > main {
+  height: auto;
+  flex: 1 0 auto;
+}
+body:not(.in-call) #welcome {
+  height: auto;
+  min-height: calc(100dvh - var(--header) - 44px);
+  overflow: visible;
+}
+body.in-call #root > main { height: calc(100dvh - var(--header) - 44px); }
+body.in-call .call-controls { bottom: calc(44px + env(safe-area-inset-bottom)); }
+
+/* AceYourCall identity: one outlined wordmark shared by every public surface. */
+.ace-logo { display:block; width:170px; height:auto; max-width:100%; filter:invert(1); flex-shrink:0; }
+:root[data-theme="light"] .ace-logo { filter:none; }
+.landing-wordmark .ace-logo { width:290px; }
+@media(max-width:600px) { .ace-logo { width:156px; } .landing-wordmark .ace-logo { width:260px; } }

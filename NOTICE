@@ -1,0 +1,14 @@
+AceYourCall
+Copyright 2026 Mostly Right Inc.
+
+Code is provided under Apache License 2.0. No trademark license is granted for
+AceYourCall or Mostly Right names and logos. The logo SVGs are finished artwork,
+not a redistribution of a font file. Brand artwork and decorative generated
+backgrounds are supplied for running this application; do not imply endorsement
+of a modified service. Replace branding for an independently branded deployment.
+
+Tabler icons: MIT license, see licenses/tabler-icons.txt.
+Material Design icon: Apache-2.0, see licenses/material-design-icons.txt.
+Dependencies retain their own licenses; see package-lock.json and package notices.
+LiveKit and Caddy images are distributed by their respective publishers, not
+relicensed by this project.

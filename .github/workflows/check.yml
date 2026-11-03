@@ -1,0 +1,28 @@
+name: checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.2
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check:secrets
+      - run: npm run build
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - run: npm audit --omit=dev
+      - run: sudo python3 selfhost/setup.py --no-key
+      - run: sudo docker compose -f selfhost/compose.yaml config --quiet
+      - run: sudo docker compose -f selfhost/compose.yaml up --build --wait --wait-timeout 120
+      - if: always()
+        run: sudo docker compose -f selfhost/compose.yaml down --volumes

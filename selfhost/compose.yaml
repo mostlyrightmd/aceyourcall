@@ -1,0 +1,36 @@
+name: aceyourcall
+include:
+  - path: generated/media-compose.yaml
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: selfhost/Dockerfile
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./generated:/config:ro
+      - app-data:/app/private
+    healthcheck:
+      test: [CMD, node, /app/selfhost/health.mjs]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    logging:
+      options: {max-size: 10m, max-file: '3'}
+  caddy:
+    image: livekit/caddyl4@sha256:9dd090159a6042a907dbff0ce9dda27a21d2a559dc7b03b60a8e6b1b60b8348e
+    profiles: [https]
+    command: run --config /config/caddy.json
+    restart: unless-stopped
+    network_mode: host
+    volumes: [./generated:/config:ro, caddy-data:/data]
+    logging:
+      options: {max-size: 10m, max-file: '3'}
+volumes:
+  app-data:
+  caddy-data:

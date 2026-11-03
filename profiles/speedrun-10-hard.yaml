@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "id": "speedrun-10-hard",
+  "title": "Speedrun \u00b7 pressure test",
+  "duration_seconds": 600,
+  "cutoff_seconds": 20,
+  "voice": "marin",
+  "partners": ["A", "B", "C"],
+  "greeting": "Let's begin. What are you building, and why is your team the one to build it?",
+  "instructions": "Be firm, curious, concise, and professional. Pressure test ambiguous claims with one precise follow-up. Challenge the evidence, never the person.",
+  "phase_lengths": [75, 135, 135, 150, 75, 30],
+}
